@@ -411,7 +411,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteOrder = async (orderId: string) => {
     try {
       // Delete order items first
-      const { data: deletedItems, error: itemsError } = await supabase
+      const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
         .eq('order_id', orderId)
