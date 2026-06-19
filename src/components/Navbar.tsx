@@ -53,6 +53,24 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="glass-header">
+      {/* Internal Warning Banner */}
+      <div style={{
+        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+        borderBottom: '1px solid var(--glass-border)',
+        padding: '8px 24px',
+        textAlign: 'center',
+        fontSize: '0.8rem',
+        fontWeight: 700,
+        color: 'var(--primary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px',
+        width: '100%'
+      }}>
+        <span>⚠️ WEBSITE DÙNG NỘI BỘ: Nếu bạn không phải người nội bộ, đặt hàng sẽ không có tác dụng.</span>
+      </div>
+
       <div className="container" style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="navbar-wrapper">
           
