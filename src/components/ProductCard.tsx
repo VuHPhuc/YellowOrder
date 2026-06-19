@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
 import { Star, ShoppingCart, Eye } from 'lucide-react';
@@ -11,6 +11,32 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart, setSelectedProduct, setActiveView } = useStore();
   const [revealNsfw, setRevealNsfw] = useState(false);
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
+
+  useEffect(() => {
+    let interval: any;
+    const showCarousel = isHovered && gallery.length > 1 && !(product.isNsfw && !revealNsfw);
+    
+    if (showCarousel) {
+      // Instantly switch to index 1 (first sub-image)
+      setCurrentImgIndex(1);
+      
+      let nextIndex = 1;
+      interval = setInterval(() => {
+        nextIndex = (nextIndex + 1) % gallery.length;
+        setCurrentImgIndex(nextIndex);
+      }, 2000);
+    } else {
+      setCurrentImgIndex(0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isHovered, gallery.length, product.isNsfw, revealNsfw]);
 
   const handleViewDetails = () => {
     setSelectedProduct(product);
@@ -22,6 +48,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     e.stopPropagation();
     addToCart(product, 1);
   };
+
+  const shouldZoom = gallery.length <= 1 && isHovered && !(product.isNsfw && !revealNsfw);
 
   return (
     <div className="card animate-fade-in" style={{
@@ -35,6 +63,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Product Image Panel */}
       <div 
         onClick={handleViewDetails}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
           position: 'relative',
           width: '100%',
@@ -47,7 +77,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         }}
       >
         <img 
-          src={product.image} 
+          src={gallery[currentImgIndex] || product.image} 
           alt={product.name}
           style={{
             position: 'absolute',
@@ -57,15 +87,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             height: '100%',
             objectFit: 'cover',
             transition: 'transform var(--transition-slow), filter var(--transition-fast)',
-            filter: product.isNsfw && !revealNsfw ? 'blur(20px)' : 'none'
-          }}
-          onMouseEnter={(e) => {
-            if (!(product.isNsfw && !revealNsfw)) {
-              e.currentTarget.style.transform = 'scale(1.08)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
+            filter: product.isNsfw && !revealNsfw ? 'blur(20px)' : 'none',
+            transform: shouldZoom ? 'scale(1.08)' : 'scale(1)'
           }}
         />
 

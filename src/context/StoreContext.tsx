@@ -496,6 +496,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const addToCart = (product: Product, quantity = 1) => {
+    if (!currentUser) {
+      alert('Vui lòng đăng nhập tài khoản để thêm sản phẩm vào giỏ hàng!');
+      setActiveView('login');
+      return;
+    }
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.product.id === product.id);
       if (existingItem) {

@@ -467,3 +467,26 @@ button {
 body, input, select, textarea, button {
   letter-spacing: -0.01em;
 }
+
+/* Animated gradient text effect */
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient-text {
+  background: linear-gradient(90deg, #facc15, #f59e0b, #eab308, #ca8a04, #facc15);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: gradient-animation 3s linear infinite;
+  display: inline-block;
+}
