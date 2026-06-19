@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Trash2, ShoppingBag, ArrowLeft, Plus, Minus, CreditCard } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const CartPage: React.FC = () => {
   const {
@@ -101,7 +102,7 @@ export const CartPage: React.FC = () => {
                   </span>
                   <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '2px 0 6px 0' }}>{item.product.name}</h3>
                   <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                    Đơn giá: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.product.price)}
+                    Đơn giá: {formatPrice(item.product.price)}
                   </span>
                 </div>
 
@@ -133,7 +134,7 @@ export const CartPage: React.FC = () => {
                 {/* Subtotal & Action */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '120px', justifyContent: 'flex-end' }}>
                   <span style={{ fontSize: '1rem', fontWeight: 800 }}>
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.product.price * item.quantity)}
+                    {formatPrice(item.product.price * item.quantity)}
                   </span>
                   <button 
                     onClick={() => removeFromCart(item.product.id)}
@@ -178,7 +179,7 @@ export const CartPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Tạm tính</span>
               <span style={{ fontWeight: 700 }}>
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cartTotal)}
+                {formatPrice(cartTotal)}
               </span>
             </div>
             
@@ -188,21 +189,21 @@ export const CartPage: React.FC = () => {
                 {shippingFee === 0 ? (
                   <span style={{ color: '#10b981' }}>Miễn phí</span>
                 ) : (
-                  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(shippingFee)
+                  formatPrice(shippingFee)
                 )}
               </span>
             </div>
 
             {shippingFee > 0 && (
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '-4px' }}>
-                Mua thêm <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(200 - cartTotal)}</strong> để được Miễn phí giao hàng.
+                Mua thêm <strong>{formatPrice(200 - cartTotal)}</strong> để được Miễn phí giao hàng.
               </p>
             )}
 
             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: 800 }}>
               <span>Tổng thanh toán</span>
               <span style={{ color: 'var(--primary)' }}>
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(grandTotal)}
+                {formatPrice(grandTotal)}
               </span>
             </div>
           </div>

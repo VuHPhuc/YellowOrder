@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
 import { supabase } from '../utils/supabase';
+import { formatPrice } from '../utils/currency';
 import { 
   Package, 
   ListOrdered, 
@@ -729,7 +730,7 @@ export const AdminDashboard: React.FC = () => {
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{order.shipping?.phone || 'Không có SĐT'}</div>
                           </td>
                           <td style={{ padding: '14px 16px', fontWeight: 700 }}>
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.total)}
+                            {formatPrice(order.total)}
                           </td>
                           <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{order.date}</td>
                           <td style={{ padding: '14px 16px' }}>
@@ -795,7 +796,7 @@ export const AdminDashboard: React.FC = () => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{prod.category}</span>
                           <span style={{ color: 'var(--border-hover)' }}>•</span>
                           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(prod.price)}
+                            {formatPrice(prod.price)}
                           </span>
                           <span style={{ color: 'var(--border-hover)' }}>•</span>
                           <span style={{ fontSize: '0.75rem', color: prod.stock > 0 ? 'var(--text-secondary)' : '#ef4444', fontWeight: 600 }}>
@@ -880,7 +881,13 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="label">Giá sản phẩm (USD) *</label>
+                    <label className="label">
+                      Giá sản phẩm (USD) * {prodPrice && !isNaN(parseFloat(prodPrice)) && (
+                        <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>
+                          (Quy đổi: {formatPrice(parseFloat(prodPrice))})
+                        </span>
+                      )}
+                    </label>
                     <input 
                       type="number" 
                       step="0.01"
@@ -1391,7 +1398,13 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="label">Giá sản phẩm (USD) *</label>
+                  <label className="label">
+                    Giá sản phẩm (USD) * {editPrice && !isNaN(parseFloat(editPrice)) && (
+                      <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>
+                        (Quy đổi: {formatPrice(parseFloat(editPrice))})
+                      </span>
+                    )}
+                  </label>
                   <input 
                     type="number" 
                     step="0.01"

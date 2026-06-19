@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Mail, Calendar, ShieldAlert, ShoppingBag, Eye } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const AccountPage: React.FC = () => {
   const { currentUser, lastOrder, setActiveView } = useStore();
@@ -114,7 +115,7 @@ export const AccountPage: React.FC = () => {
                   {lastOrder.items[0]?.product.name} {lastOrder.items.length > 1 ? `và ${lastOrder.items.length - 1} sản phẩm khác` : ''}
                 </span>
                 <span style={{ color: 'var(--text-secondary)' }}>{lastOrder.date.split(',')[0]}</span>
-                <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(lastOrder.total)}</strong>
+                <strong>{formatPrice(lastOrder.total)}</strong>
                 <div style={{ textAlign: 'right' }}>
                   <button
                     onClick={handleViewOrder}

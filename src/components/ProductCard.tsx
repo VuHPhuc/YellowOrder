@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
 import { Star, ShoppingCart, Eye } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 interface ProductCardProps {
   product: Product;
@@ -178,7 +179,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Price */}
         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
-          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.price)}
+          {formatPrice(product.price)}
         </div>
 
       </div>

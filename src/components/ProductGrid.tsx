@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { ProductCard } from './ProductCard';
 import { SlidersHorizontal, RefreshCcw, ShoppingBag } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const ProductGrid: React.FC = () => {
   const {
@@ -123,8 +124,8 @@ export const ProductGrid: React.FC = () => {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
-                <span>$0</span>
-                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Tối đa: ${priceRange[1]}</span>
+                <span>{formatPrice(0)}</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Tối đa: {formatPrice(priceRange[1])}</span>
               </div>
               <input
                 type="range"

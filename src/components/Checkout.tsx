@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { ArrowLeft, CheckCircle, ShieldCheck } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const Checkout: React.FC = () => {
   const {
@@ -272,7 +273,7 @@ export const Checkout: React.FC = () => {
                         <div><strong>Ngân hàng:</strong> Techcombank</div>
                         <div><strong>Số tài khoản:</strong> 1903 8888 888 888</div>
                         <div><strong>Chủ tài khoản:</strong> CÔNG TY CỔ PHẦN YELLOWORDER</div>
-                        <div><strong>Số tiền:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(grandTotal)}</div>
+                        <div><strong>Số tiền:</strong> {formatPrice(grandTotal)}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', fontStyle: 'italic' }}>
                           * Hệ thống sẽ tự động xác minh giao dịch sau 1-3 phút kể từ khi nhận được tiền.
                         </div>
@@ -335,11 +336,11 @@ export const Checkout: React.FC = () => {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h4 style={{ fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.name}</h4>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    {item.quantity} x {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.product.price)}
+                    {item.quantity} x {formatPrice(item.product.price)}
                   </span>
                 </div>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.product.price * item.quantity)}
+                  {formatPrice(item.product.price * item.quantity)}
                 </span>
               </div>
             ))}
@@ -349,20 +350,20 @@ export const Checkout: React.FC = () => {
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Tạm tính</span>
-              <span style={{ fontWeight: 700 }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cartTotal)}</span>
+              <span style={{ fontWeight: 700 }}>{formatPrice(cartTotal)}</span>
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Phí vận chuyển</span>
               <span style={{ fontWeight: 700 }}>
-                {shippingFee === 0 ? 'Miễn phí' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(shippingFee)}
+                {shippingFee === 0 ? 'Miễn phí' : formatPrice(shippingFee)}
               </span>
             </div>
 
             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800 }}>
               <span>Tổng thanh toán</span>
               <span style={{ color: 'var(--primary)' }}>
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(grandTotal)}
+                {formatPrice(grandTotal)}
               </span>
             </div>
           </div>

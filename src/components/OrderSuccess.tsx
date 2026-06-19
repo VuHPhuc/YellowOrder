@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Check, ArrowRight, Printer, Calendar, MapPin, CreditCard, Box } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const OrderSuccess: React.FC = () => {
   const { lastOrder, setActiveView } = useStore();
@@ -136,7 +137,7 @@ export const OrderSuccess: React.FC = () => {
                     <span style={{ color: 'var(--text-secondary)' }}>SL: {item.quantity}</span>
                   </div>
                   <span style={{ fontWeight: 700 }}>
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.product.price * item.quantity)}
+                    {formatPrice(item.product.price * item.quantity)}
                   </span>
                 </div>
               ))}

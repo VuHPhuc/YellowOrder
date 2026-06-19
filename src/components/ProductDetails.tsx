@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Star, ShoppingCart, ArrowLeft, Check, ShieldCheck, Heart } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const ProductDetails: React.FC = () => {
   const { selectedProduct, setSelectedProduct, addToCart, setActiveView } = useStore();
@@ -73,6 +74,8 @@ export const ProductDetails: React.FC = () => {
           <div style={{
             position: 'relative',
             width: '100%',
+            aspectRatio: '1 / 1',
+            minHeight: '350px',
             borderRadius: 'var(--radius-lg)',
             overflow: 'hidden',
             backgroundColor: 'var(--bg-input)',
@@ -84,7 +87,7 @@ export const ProductDetails: React.FC = () => {
               alt={selectedProduct.name}
               style={{ 
                 width: '100%', 
-                height: 'auto', 
+                height: '100%', 
                 display: 'block', 
                 objectFit: 'cover',
                 filter: selectedProduct.isNsfw && !revealNsfw ? 'blur(25px)' : 'none',
@@ -214,7 +217,7 @@ export const ProductDetails: React.FC = () => {
           {/* Pricing */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedProduct.price)}
+              {formatPrice(selectedProduct.price)}
             </span>
             <span className="badge badge-yellow" style={{ fontSize: '0.7rem' }}>Còn hàng: {selectedProduct.stock} sản phẩm</span>
           </div>
