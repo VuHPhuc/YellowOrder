@@ -75,6 +75,17 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (editingProduct) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [editingProduct]);
+
   // Security Check
   if (!currentUser || currentUser.role !== 'admin') {
     return (
@@ -986,8 +997,8 @@ export const AdminDashboard: React.FC = () => {
             position: 'fixed',
             top: 0,
             left: 0,
-            width: '100%',
-            height: '100%',
+            right: 0,
+            bottom: 0,
             backgroundColor: 'rgba(9, 13, 22, 0.85)',
             backdropFilter: 'blur(8px)',
             display: 'flex',
@@ -1008,9 +1019,12 @@ export const AdminDashboard: React.FC = () => {
             border: '1.5px solid var(--primary)',
             background: 'var(--bg-card)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit size={20} style={{ color: 'var(--primary)' }} /> Chỉnh sửa sản phẩm: <span style={{ color: 'var(--primary)' }}>{editingProduct.name}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', gap: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1 }}>
+                <Edit size={20} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  Chỉnh sửa: <span style={{ color: 'var(--primary)' }}>{editingProduct.name}</span>
+                </span>
               </h3>
               <button 
                 type="button" 

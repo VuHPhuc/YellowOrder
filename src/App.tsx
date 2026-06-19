@@ -21,6 +21,10 @@ const MainAppContent: React.FC = () => {
   // Filter featured products for the home page
   const featuredProducts = products.filter(p => p.isFeatured);
 
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeView]);
+
   const renderActiveView = () => {
     switch (activeView) {
       case 'home':
@@ -30,7 +34,7 @@ const MainAppContent: React.FC = () => {
             <Hero />
 
             {/* Featured Products Section */}
-            <section style={{ padding: '40px 0', textAlign: 'left' }} className="animate-fade-in">
+            <section style={{ padding: '40px 0', textAlign: 'left' }} className="container animate-fade-in">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <h2 style={{ fontSize: '1.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -58,7 +62,7 @@ const MainAppContent: React.FC = () => {
             </section>
 
             {/* Promotional Promo Card */}
-            <section style={{ padding: '40px 0 60px 0' }} className="animate-fade-in">
+            <section style={{ padding: '40px 0 60px 0' }} className="container animate-fade-in">
               <div className="card" style={{
                 background: 'linear-gradient(135deg, rgba(234,179,8,0.2) 0%, rgba(202,138,4,0.05) 100%)',
                 border: '1.5px dashed var(--primary)',
