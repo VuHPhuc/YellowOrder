@@ -207,7 +207,15 @@ export const Navbar: React.FC = () => {
                     }}>
                       {currentUser.name.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600, maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: 700, 
+                      color: 'var(--primary)',
+                      maxWidth: '80px', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap' 
+                    }}>
                       {currentUser.name}
                     </span>
                   </button>
