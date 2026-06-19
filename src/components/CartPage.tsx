@@ -13,7 +13,7 @@ export const CartPage: React.FC = () => {
     setActiveView
   } = useStore();
 
-  const shippingFee = cartTotal > 200 || cartTotal === 0 ? 0 : 15.00;
+  const shippingFee = cartTotal > 2000000 || cartTotal === 0 ? 0 : 30000;
   const grandTotal = cartTotal + shippingFee;
 
   if (cart.length === 0) {
@@ -196,7 +196,7 @@ export const CartPage: React.FC = () => {
 
             {shippingFee > 0 && (
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '-4px' }}>
-                Mua thêm <strong>{formatPrice(200 - cartTotal)}</strong> để được Miễn phí giao hàng.
+                Mua thêm <strong>{formatPrice(2000000 - cartTotal)}</strong> để được Miễn phí giao hàng.
               </p>
             )}
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
 import { supabase } from '../utils/supabase';
-import { formatPrice } from '../utils/currency';
+import { formatPrice, convertJpyToVnd } from '../utils/currency';
 import { 
   Package, 
   ListOrdered, 
@@ -44,6 +44,7 @@ export const AdminDashboard: React.FC = () => {
   // Add Product Form State
   const [prodName, setProdName] = useState('');
   const [prodPrice, setProdPrice] = useState('');
+  const [prodPriceJpy, setProdPriceJpy] = useState('');
   const [prodStock, setProdStock] = useState('10');
   const [prodCategory, setProdCategory] = useState('Figure');
   const [prodDescription, setProdDescription] = useState('');
@@ -68,6 +69,7 @@ export const AdminDashboard: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [editPriceJpy, setEditPriceJpy] = useState('');
   const [editStock, setEditStock] = useState('');
   const [editCategory, setEditCategory] = useState('Figure');
   const [editDescription, setEditDescription] = useState('');
@@ -282,6 +284,7 @@ export const AdminDashboard: React.FC = () => {
     setEditingProduct(prod);
     setEditName(prod.name);
     setEditPrice(prod.price.toString());
+    setEditPriceJpy('');
     setEditStock(prod.stock.toString());
     setEditCategory(prod.category);
     setEditDescription(prod.description || '');
@@ -478,6 +481,7 @@ export const AdminDashboard: React.FC = () => {
         // Reset Form
         setProdName('');
         setProdPrice('');
+        setProdPriceJpy('');
         setProdStock('10');
         setProdDescription('');
         setProdIsFeatured(false);
@@ -881,22 +885,35 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="label">
-                      Giá sản phẩm (USD) * {prodPrice && !isNaN(parseFloat(prodPrice)) && (
-                        <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>
-                          (Quy đổi: {formatPrice(parseFloat(prodPrice))})
-                        </span>
-                      )}
-                    </label>
+                    <label className="label">Giá sản phẩm (VND) *</label>
                     <input 
                       type="number" 
-                      step="0.01"
-                      min="0.01"
+                      min="1"
                       value={prodPrice}
                       onChange={(e) => setProdPrice(e.target.value)}
                       className="input-field" 
-                      placeholder="e.g. 49.99"
+                      placeholder="Ví dụ: 4500000"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      value={prodPriceJpy}
+                      onChange={(e) => {
+                        const jpyVal = e.target.value;
+                        setProdPriceJpy(jpyVal);
+                        if (jpyVal && !isNaN(parseFloat(jpyVal))) {
+                          setProdPrice(convertJpyToVnd(parseFloat(jpyVal)).toString());
+                        } else {
+                          setProdPrice('');
+                        }
+                      }}
+                      className="input-field" 
+                      placeholder="Ví dụ: 6500"
                     />
                   </div>
 
@@ -1398,21 +1415,34 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="label">
-                    Giá sản phẩm (USD) * {editPrice && !isNaN(parseFloat(editPrice)) && (
-                      <span style={{ color: 'var(--primary)', marginLeft: '6px' }}>
-                        (Quy đổi: {formatPrice(parseFloat(editPrice))})
-                      </span>
-                    )}
-                  </label>
+                  <label className="label">Giá sản phẩm (VND) *</label>
                   <input 
                     type="number" 
-                    step="0.01"
-                    min="0.01"
+                    min="1"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
                     className="input-field" 
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={editPriceJpy}
+                    onChange={(e) => {
+                      const jpyVal = e.target.value;
+                      setEditPriceJpy(jpyVal);
+                      if (jpyVal && !isNaN(parseFloat(jpyVal))) {
+                        setEditPrice(convertJpyToVnd(parseFloat(jpyVal)).toString());
+                      } else {
+                        setEditPrice('');
+                      }
+                    }}
+                    className="input-field" 
+                    placeholder="Ví dụ: 6500"
                   />
                 </div>
 

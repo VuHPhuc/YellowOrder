@@ -35,7 +35,7 @@ export const Checkout: React.FC = () => {
     }
   }, [currentUser]);
 
-  const shippingFee = cartTotal > 200 ? 0 : 15.00;
+  const shippingFee = cartTotal > 2000000 ? 0 : 30000;
   const grandTotal = cartTotal + shippingFee;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

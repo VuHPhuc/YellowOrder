@@ -127,7 +127,7 @@ const FALLBACK_PRODUCTS: Product[] = [
   {
     id: 'prod-1',
     name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
-    price: 159.99,
+    price: 4000000,
     rating: 4.9,
     reviewsCount: 42,
     category: 'Figure',
@@ -147,7 +147,7 @@ const FALLBACK_PRODUCTS: Product[] = [
   {
     id: 'prod-2',
     name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
-    price: 8.50,
+    price: 210000,
     rating: 4.8,
     reviewsCount: 154,
     category: 'Food',
@@ -167,7 +167,7 @@ const FALLBACK_PRODUCTS: Product[] = [
   {
     id: 'prod-3',
     name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
-    price: 12.00,
+    price: 300000,
     rating: 5.0,
     reviewsCount: 89,
     category: 'Books',
@@ -187,7 +187,7 @@ const FALLBACK_PRODUCTS: Product[] = [
   {
     id: 'prod-4',
     name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
-    price: 180.00,
+    price: 4500000,
     rating: 4.9,
     reviewsCount: 28,
     category: 'Figure',
@@ -224,7 +224,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Search, Filter and Sort States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
   const [sortBy, setSortBy] = useState('featured');
   const [showNsfw, setShowNsfw] = useState(false);
   
@@ -711,7 +711,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const placeOrder = async (shippingDetails: any) => {
     const orderId = 'ORD-' + Math.floor(Math.random() * 900000 + 100000);
-    const shippingFee = cartTotal > 200 ? 0 : 15.00;
+    const shippingFee = cartTotal > 2000000 ? 0 : 30000;
     const orderTotal = cartTotal + shippingFee;
     
     const newOrder: Order = {

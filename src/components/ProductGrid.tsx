@@ -28,7 +28,7 @@ export const ProductGrid: React.FC = () => {
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('All');
-    setPriceRange([0, 500]);
+    setPriceRange([0, 10000000]);
     setSortBy('featured');
     setShowNsfw(false);
   };
@@ -130,8 +130,8 @@ export const ProductGrid: React.FC = () => {
               <input
                 type="range"
                 min="0"
-                max="500"
-                step="10"
+                max="10000000"
+                step="100000"
                 value={priceRange[1]}
                 onChange={handlePriceChange}
                 style={{
