@@ -6,6 +6,7 @@ export const ProductDetails: React.FC = () => {
   const { selectedProduct, setSelectedProduct, addToCart, setActiveView } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
+  const [revealNsfw, setRevealNsfw] = useState(false);
 
   if (!selectedProduct) {
     return (
@@ -63,6 +64,7 @@ export const ProductDetails: React.FC = () => {
         {/* Left Column - Large Image */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{
+            position: 'relative',
             width: '100%',
             borderRadius: 'var(--radius-lg)',
             overflow: 'hidden',
@@ -73,8 +75,64 @@ export const ProductDetails: React.FC = () => {
             <img 
               src={selectedProduct.image} 
               alt={selectedProduct.name}
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
+              style={{ 
+                width: '100%', 
+                height: 'auto', 
+                display: 'block', 
+                objectFit: 'cover',
+                filter: selectedProduct.isNsfw && !revealNsfw ? 'blur(25px)' : 'none',
+                transition: 'filter var(--transition-fast)'
+              }}
             />
+            {selectedProduct.isNsfw && !revealNsfw && (
+              <div 
+                onClick={() => setRevealNsfw(true)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  cursor: 'pointer'
+                }}
+              >
+                <span style={{ 
+                  fontSize: '0.9rem', 
+                  fontWeight: 800, 
+                  color: '#ffffff', 
+                  backgroundColor: '#ef4444', 
+                  padding: '6px 12px', 
+                  borderRadius: '4px', 
+                  textTransform: 'uppercase', 
+                  marginBottom: '8px',
+                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.4)'
+                }}>
+                  NSFW 18+ (Nội dung nhạy cảm)
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>Click để mở khóa hình ảnh</span>
+              </div>
+            )}
+            {selectedProduct.isNsfw && (
+              <span 
+                className="badge"
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  fontSize: '0.75rem',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  zIndex: 3
+                }}
+              >
+                NSFW
+              </span>
+            )}
           </div>
 
           {/* Guarantee Info Box */}

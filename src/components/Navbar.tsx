@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Search, ShoppingCart, Sun, Moon, LogOut, User, ShoppingBag, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, Sun, Moon, LogOut, User, ShoppingBag, Menu, X, Settings } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const {
@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const handleNavClick = (view: 'home' | 'shop' | 'cart' | 'checkout' | 'login' | 'success' | 'account') => {
+  const handleNavClick = (view: 'home' | 'shop' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin') => {
     setActiveView(view);
     setIsMobileMenuOpen(false);
   };
@@ -217,6 +217,28 @@ export const Navbar: React.FC = () => {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Email</span>
                         <span style={{ fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{currentUser.email}</span>
                       </div>
+                      {currentUser.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            handleNavClick('admin');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.85rem',
+                            justifyContent: 'flex-start',
+                            width: '100%',
+                            color: 'var(--primary)',
+                            fontWeight: 700
+                          }}
+                        >
+                          <Settings size={16} /> Trang quản trị
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -341,6 +363,23 @@ export const Navbar: React.FC = () => {
                 Cửa Hàng
               </button>
               
+              {currentUser && currentUser.role === 'admin' && (
+                <button 
+                  onClick={() => handleNavClick('admin')}
+                  style={{ 
+                    justifyContent: 'flex-start',
+                    padding: '10px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 700, 
+                    fontSize: '1rem',
+                    backgroundColor: activeView === 'admin' ? 'var(--primary-glow)' : 'transparent',
+                    color: activeView === 'admin' ? 'var(--primary)' : 'var(--text-primary)',
+                    width: '100%'
+                  }}
+                >
+                  Trang quản trị
+                </button>
+              )}
               {currentUser && (
                 <button 
                   onClick={() => handleNavClick('account')}

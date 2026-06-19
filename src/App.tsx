@@ -9,6 +9,7 @@ import { Checkout } from './components/Checkout';
 import { LoginRegister } from './components/LoginRegister';
 import { OrderSuccess } from './components/OrderSuccess';
 import { AccountPage } from './components/AccountPage';
+import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 import { ProductCard } from './components/ProductCard';
 import { ArrowRight, Flame } from 'lucide-react';
@@ -102,6 +103,8 @@ const MainAppContent: React.FC = () => {
         return <OrderSuccess />;
       case 'account':
         return <AccountPage />;
+      case 'admin':
+        return <AdminDashboard />;
       default:
         return <Hero />;
     }

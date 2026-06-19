@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext';
 import { Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 export const LoginRegister: React.FC = () => {
-  const { login, setActiveView } = useStore();
+  const { login, signUp, setActiveView } = useStore();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   
   // Form states
@@ -14,7 +14,7 @@ export const LoginRegister: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,18 +31,46 @@ export const LoginRegister: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
+    try {
+      if (activeTab === 'login') {
+        const { error: loginError } = await login(email.trim(), password);
+        if (loginError) {
+          setError(loginError.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+        } else {
+          setActiveView('home');
+        }
+      } else {
+        const { error: signUpError } = await signUp(email.trim(), password, name.trim());
+        if (signUpError) {
+          setError(signUpError.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        } else {
+          alert('Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
+          setActiveTab('login');
+          setPassword('');
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đã xảy ra lỗi trong quá trình kết nối.');
+    } finally {
       setIsLoading(false);
-      const userName = activeTab === 'register' ? name : 'Khách hàng YellowOrder';
-      login(email.trim(), userName);
-      setActiveView('home');
-    }, 1000);
+    }
   };
 
-  const handleQuickLogin = () => {
-    login('demo@yelloworder.com', 'Nguyễn Văn Demo');
-    setActiveView('home');
+  const handleQuickLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const { error: loginError } = await login('demo@yelloworder.com', '12345678');
+      if (loginError) {
+        setError('Tài khoản demo@yelloworder.com chưa tồn tại. Hãy đăng ký một tài khoản mới để trải nghiệm!');
+      } else {
+        setActiveView('home');
+      }
+    } catch (err: any) {
+      setError('Lỗi kết nối khi đăng nhập tài khoản demo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

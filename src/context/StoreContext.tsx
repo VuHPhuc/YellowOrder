@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../utils/supabase';
 
 export interface Product {
   id: string;
@@ -13,6 +14,7 @@ export interface Product {
   features: string[];
   stock: number;
   isFeatured?: boolean;
+  isNsfw?: boolean;
 }
 
 export interface CartItem {
@@ -21,8 +23,10 @@ export interface CartItem {
 }
 
 export interface User {
+  id: string;
   email: string;
   name: string;
+  role: 'admin' | 'user';
   avatar?: string;
 }
 
@@ -55,26 +59,52 @@ interface StoreContextType {
   sortBy: string;
   setSortBy: (sort: string) => void;
   
+  // NSFW Filter states
+  showNsfw: boolean;
+  setShowNsfw: (show: boolean) => void;
+
   currentUser: User | null;
-  login: (email: string, name: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
+  logout: () => Promise<void>;
   
-  activeView: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account';
-  setActiveView: (view: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account') => void;
+  activeView: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin';
+  setActiveView: (view: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin') => void;
   
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   
-  placeOrder: (shippingDetails: any) => string;
+  placeOrder: (shippingDetails: any) => Promise<string>;
   lastOrder: Order | null;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  
+  // Admin functions
+  refreshProducts: () => Promise<void>;
+  allOrders: Order[];
+  fetchAllOrders: () => Promise<void>;
+  updateOrderStatus: (orderId: string, status: 'processing' | 'shipped' | 'delivered') => Promise<void>;
+  addProduct: (
+    productData: {
+      name: string;
+      price: number;
+      category: string;
+      description: string;
+      specs: Record<string, string>;
+      features: string[];
+      stock: number;
+      isFeatured: boolean;
+      isNsfw: boolean;
+    },
+    imageFile?: File
+  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  deleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-// High-quality mock product data
-const MOCK_PRODUCTS: Product[] = [
+// Local mock products database as fallback
+const FALLBACK_PRODUCTS: Product[] = [
   {
     id: 'prod-1',
     name: 'YellowOrder Apex Pro Wireless Headset',
@@ -92,7 +122,8 @@ const MOCK_PRODUCTS: Product[] = [
     },
     features: ['Active Noise Cancellation (ANC)', 'High-Resolution Audio certified', 'Memory foam earcups', 'Signature Yellow LED indicator'],
     stock: 12,
-    isFeatured: true
+    isFeatured: true,
+    isNsfw: false
   },
   {
     id: 'prod-2',
@@ -111,7 +142,8 @@ const MOCK_PRODUCTS: Product[] = [
     },
     features: ['Hot-swappable PCB', 'Sound dampening silicone pads', 'Detachable coiled USB-C cable', 'Aluminum rotary knob'],
     stock: 8,
-    isFeatured: true
+    isFeatured: true,
+    isNsfw: false
   },
   {
     id: 'prod-3',
@@ -130,7 +162,8 @@ const MOCK_PRODUCTS: Product[] = [
     },
     features: ['14-day battery life', 'Real-time workout coaching', 'Contactless payments', 'Sleep tracking & analysis'],
     stock: 15,
-    isFeatured: true
+    isFeatured: true,
+    isNsfw: false
   },
   {
     id: 'prod-4',
@@ -148,93 +181,20 @@ const MOCK_PRODUCTS: Product[] = [
       'Dimensions': '48 x 30 x 18 cm'
     },
     features: ['Water-resistant YKK zippers', 'Hidden passport/wallet pocket', 'Magnetic sternum strap buckle', 'Luggage pass-through'],
-    stock: 22
-  },
-  {
-    id: 'prod-5',
-    name: 'YellowOrder Horizon Curved Monitor',
-    price: 459.99,
-    rating: 4.8,
-    reviewsCount: 42,
-    category: 'Monitors',
-    description: 'Immerse yourself in stunning visual clarity. The Horizon curved display offers ultrawide viewing angles with true color calibration for content creators.',
-    image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Panel Size': '34" Curved (1500R Curve)',
-      'Resolution': '3440 x 1440 WQHD',
-      'Refresh Rate': '165Hz',
-      'Color Gamut': '99% DCI-P3'
-    },
-    features: ['VESA DisplayHDR 400', 'AMD FreeSync Premium Pro', 'Built-in KVM Switch', 'Eye-care filter technology'],
-    stock: 5
-  },
-  {
-    id: 'prod-6',
-    name: 'YellowOrder Ember Ceramic Mug',
-    price: 45.00,
-    rating: 4.5,
-    reviewsCount: 112,
-    category: 'Lifestyle',
-    description: 'Keep your coffee or tea at the absolute perfect temperature from the first sip to the last. Controlled wirelessly through our intuitive companion widget.',
-    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Capacity': '12 oz (355ml)',
-      'Material': 'Double-walled Stainless Steel / Ceramic coating',
-      'Temperature Range': '50°C - 62.5°C',
-      'Charging Stand': 'Coaster induction base'
-    },
-    features: ['80-minute standalone battery life', 'Customizable LED halo color', 'Auto-sleep smart sensors', 'Dishwasher safe body'],
-    stock: 40
-  },
-  {
-    id: 'prod-7',
-    name: 'YellowOrder Core Charging Dock',
-    price: 79.99,
-    rating: 4.6,
-    reviewsCount: 78,
-    category: 'Lifestyle',
-    description: 'Declutter your workspace with this 3-in-1 magnetic wireless charging stand. Beautifully wrapped in genuine leather with weighted steel construction.',
-    image: 'https://images.unsplash.com/photo-1622445262465-2481c4574875?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Wireless Output': '15W Fast Charge (MagSafe compatible)',
-      'Ports': 'USB-C input, USB-A output',
-      'Materials': 'Premium Leather, Aircraft Grade Aluminum',
-      'Weight': '420g'
-    },
-    features: ['Charges Phone, Watch, and Earbuds simultaneously', 'Over-current protection chips', 'Non-slip weighted rubber feet', 'Sleek ambient status light'],
-    stock: 30
-  },
-  {
-    id: 'prod-8',
-    name: 'YellowOrder Pro Desk Pad',
-    price: 39.00,
-    rating: 4.7,
-    reviewsCount: 154,
-    category: 'Lifestyle',
-    description: 'Protect your desktop and add warmth with this beautiful desk felt mat. Handcrafted with sustainably sourced wool and cork backing to prevent sliding.',
-    image: 'https://images.unsplash.com/photo-1632292224971-0d45778bd364?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Dimensions': '90 x 30 cm',
-      'Thickness': '4mm',
-      'Material': '80% Merino Wool, 20% Cork',
-      'Color': 'Charcoal Dark Grey'
-    },
-    features: ['Naturally stain-resistant', 'Soft cushioning for wrists', 'Laser-cut precise edges', 'Eco-friendly biodegradable materials'],
-    stock: 50
+    stock: 22,
+    isNsfw: false
   }
 ];
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('yelloworder_cart');
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('yelloworder_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<StoreContextType['activeView']>('home');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(() => {
@@ -247,16 +207,163 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [sortBy, setSortBy] = useState('featured');
+  const [showNsfw, setShowNsfw] = useState(false);
   
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const savedTheme = localStorage.getItem('yelloworder_theme');
     if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
-    // Default to dark theme for premium vibes
     return 'dark';
   });
 
-  // Apply theme to document root
+  // Fetch Products dynamically from Supabase database
+  const refreshProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Lỗi tải sản phẩm từ database:', error.message);
+        setProducts(FALLBACK_PRODUCTS);
+      } else if (data && data.length > 0) {
+        const mapped: Product[] = data.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          price: parseFloat(p.price),
+          rating: parseFloat(p.rating || 5.0),
+          reviewsCount: p.reviews_count || 0,
+          category: p.category,
+          description: p.description || '',
+          image: p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+          specs: p.specs || {},
+          features: p.features || [],
+          stock: p.stock || 0,
+          isFeatured: p.is_featured,
+          isNsfw: p.is_nsfw
+        }));
+        setProducts(mapped);
+      } else {
+        // If DB table is initialized but empty, show fallback mock data
+        setProducts(FALLBACK_PRODUCTS);
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối khi tải sản phẩm:', err);
+      setProducts(FALLBACK_PRODUCTS);
+    }
+  };
+
+  // Auth session sync trigger
+  useEffect(() => {
+    const syncUser = async (session: any) => {
+      if (session?.user) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            setCurrentUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: profile.name || 'Khách hàng',
+              role: (profile.role as 'admin' | 'user') || 'user'
+            });
+          } else {
+            setCurrentUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || 'Khách hàng',
+              role: 'user'
+            });
+          }
+        } catch (err) {
+          console.error('Lỗi khi đồng bộ profile:', err);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    };
+
+    // 1. Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncUser(session);
+    });
+
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session);
+    });
+
+    // 3. Load products initially
+    refreshProducts();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Fetch all orders for administrator dashboard view
+  const fetchAllOrders = async () => {
+    if (currentUser?.role !== 'admin') return;
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Lỗi tải danh sách đơn hàng:', error.message);
+        return;
+      }
+
+      if (data) {
+        const mappedOrders: Order[] = data.map((o: any) => ({
+          id: o.id,
+          items: [], // detail items can be expanded, but we display checkout totals for simplicity
+          total: parseFloat(o.total),
+          shipping: o.shipping_details,
+          date: new Date(o.created_at).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: o.status
+        }));
+        setAllOrders(mappedOrders);
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối khi tải đơn hàng:', err);
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, status: 'processing' | 'shipped' | 'delivered') => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Lỗi cập nhật đơn hàng:', error.message);
+        return;
+      }
+
+      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      if (lastOrder?.id === orderId) {
+        setLastOrder(prev => prev ? { ...prev, status } : null);
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối khi cập nhật đơn hàng:', err);
+    }
+  };
+
+  // Sync theme
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -269,7 +376,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('yelloworder_theme', theme);
   }, [theme]);
 
-  // Save cart to localstorage
+  // Sync cart
   useEffect(() => {
     localStorage.setItem('yelloworder_cart', JSON.stringify(cart));
   }, [cart]);
@@ -312,21 +419,126 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCart([]);
   };
 
-  const login = (email: string, name: string) => {
-    const user = { email, name };
-    setCurrentUser(user);
-    localStorage.setItem('yelloworder_user', JSON.stringify(user));
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    return { error };
   };
 
-  const logout = () => {
+  const signUp = async (email: string, password: string, name: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name
+        }
+      }
+    });
+    return { error };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
-    localStorage.removeItem('yelloworder_user');
     setActiveView('home');
   };
 
-  const placeOrder = (shippingDetails: any) => {
+  const addProduct = async (
+    productData: {
+      name: string;
+      price: number;
+      category: string;
+      description: string;
+      specs: Record<string, string>;
+      features: string[];
+      stock: number;
+      isFeatured: boolean;
+      isNsfw: boolean;
+    },
+    imageFile?: File
+  ) => {
+    try {
+      let imageUrl = '';
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) {
+          return { success: false, error: 'Lỗi tải ảnh lên Storage: ' + uploadError.message };
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          name: productData.name,
+          price: productData.price,
+          category: productData.category,
+          description: productData.description,
+          image_url: imageUrl || undefined,
+          specs: productData.specs,
+          features: productData.features,
+          stock: productData.stock,
+          is_featured: productData.isFeatured,
+          is_nsfw: productData.isNsfw,
+          created_by: currentUser?.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      await refreshProducts();
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Lỗi không xác định khi tạo sản phẩm' };
+    }
+  };
+
+  const deleteProduct = async (productId: string) => {
+    try {
+      if (productId.startsWith('prod-')) {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        return { success: true };
+      }
+
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      await refreshProducts();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Lỗi không xác định khi xóa sản phẩm' };
+    }
+  };
+
+  const placeOrder = async (shippingDetails: any) => {
     const orderId = 'ORD-' + Math.floor(Math.random() * 900000 + 100000);
-    const orderTotal = cartTotal + 15.00; // Mock delivery fee/tax
+    const shippingFee = cartTotal > 200 ? 0 : 15.00;
+    const orderTotal = cartTotal + shippingFee;
+    
     const newOrder: Order = {
       id: orderId,
       items: [...cart],
@@ -344,17 +556,59 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     setLastOrder(newOrder);
     localStorage.setItem('yelloworder_last_order', JSON.stringify(newOrder));
+
+    // Save order database logs if authenticated
+    if (currentUser?.id) {
+      try {
+        const { error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            id: orderId,
+            user_id: currentUser.id,
+            total: orderTotal,
+            shipping_details: shippingDetails,
+            status: 'processing'
+          });
+
+        if (orderError) {
+          console.error('Lỗi khi ghi database đơn hàng:', orderError.message);
+        } else {
+          // Log items
+          const itemsToInsert = cart.map(item => ({
+            order_id: orderId,
+            product_id: item.product.id.startsWith('prod-') ? null : item.product.id,
+            quantity: item.quantity,
+            price: item.product.price
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(itemsToInsert);
+
+          if (itemsError) {
+            console.error('Lỗi khi ghi chi tiết đơn hàng:', itemsError.message);
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi kết nối khi đặt hàng lên Supabase:', err);
+      }
+    }
+
     clearCart();
     setActiveView('success');
     return orderId;
   };
 
-  // Derive cart counts and totals
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
 
   // Compute filtered and sorted products
-  const filteredProducts = MOCK_PRODUCTS.filter(product => {
+  const filteredProducts = products.filter(product => {
+    // NSFW Filtering: if showNsfw is false, hide isNsfw products
+    if (!showNsfw && product.isNsfw) {
+      return false;
+    }
+
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -373,13 +627,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (sortBy === 'rating') {
       return b.rating - a.rating;
     }
-    // Default featured sort
     return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
   });
 
   return (
     <StoreContext.Provider value={{
-      products: MOCK_PRODUCTS,
+      products,
       filteredProducts,
       cart,
       addToCart,
@@ -396,8 +649,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setPriceRange,
       sortBy,
       setSortBy,
+      
+      showNsfw,
+      setShowNsfw,
+
       currentUser,
       login,
+      signUp,
       logout,
       activeView,
       setActiveView,
@@ -406,7 +664,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       placeOrder,
       lastOrder,
       theme,
-      toggleTheme
+      toggleTheme,
+      
+      refreshProducts,
+      allOrders,
+      fetchAllOrders,
+      updateOrderStatus,
+      addProduct,
+      deleteProduct
     }}>
       {children}
     </StoreContext.Provider>

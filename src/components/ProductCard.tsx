@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
 import { Star, ShoppingCart, Eye } from 'lucide-react';
@@ -9,6 +9,7 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart, setSelectedProduct, setActiveView } = useStore();
+  const [revealNsfw, setRevealNsfw] = useState(false);
 
   const handleViewDetails = () => {
     setSelectedProduct(product);
@@ -54,10 +55,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            transition: 'transform var(--transition-slow)'
+            transition: 'transform var(--transition-slow), filter var(--transition-fast)',
+            filter: product.isNsfw && !revealNsfw ? 'blur(20px)' : 'none'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.08)';
+            if (!(product.isNsfw && !revealNsfw)) {
+              e.currentTarget.style.transform = 'scale(1.08)';
+            }
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
@@ -71,11 +75,67 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               position: 'absolute',
               top: '12px',
               left: '12px',
-              fontSize: '0.65rem'
+              fontSize: '0.65rem',
+              zIndex: 3
             }}
           >
             Nổi bật
           </span>
+        )}
+
+        {product.isNsfw && (
+          <span 
+            className="badge"
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              fontSize: '0.65rem',
+              backgroundColor: '#ef4444',
+              color: '#ffffff',
+              zIndex: 3
+            }}
+          >
+            NSFW
+          </span>
+        )}
+
+        {product.isNsfw && !revealNsfw && (
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              setRevealNsfw(true);
+            }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              zIndex: 2,
+              cursor: 'pointer'
+            }}
+          >
+            <span style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: 800, 
+              color: '#ffffff', 
+              backgroundColor: '#ef4444', 
+              padding: '4px 8px', 
+              borderRadius: '4px', 
+              textTransform: 'uppercase', 
+              marginBottom: '6px',
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+            }}>
+              NSFW 18+
+            </span>
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Click để xem ảnh</span>
+          </div>
         )}
       </div>
 
