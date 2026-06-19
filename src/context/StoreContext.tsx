@@ -99,6 +99,21 @@ interface StoreContextType {
     imageFile?: File
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
+  updateProduct: (
+    productId: string,
+    productData: {
+      name: string;
+      price: number;
+      category: string;
+      description: string;
+      specs: Record<string, string>;
+      features: string[];
+      stock: number;
+      isFeatured: boolean;
+      isNsfw: boolean;
+    },
+    imageFile?: File
+  ) => Promise<{ success: boolean; data?: any; error?: string }>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -534,6 +549,100 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const updateProduct = async (
+    productId: string,
+    productData: {
+      name: string;
+      price: number;
+      category: string;
+      description: string;
+      specs: Record<string, string>;
+      features: string[];
+      stock: number;
+      isFeatured: boolean;
+      isNsfw: boolean;
+    },
+    imageFile?: File
+  ) => {
+    try {
+      let imageUrl = '';
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) {
+          return { success: false, error: 'Lỗi tải ảnh lên Storage: ' + uploadError.message };
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        
+        imageUrl = urlData.publicUrl;
+      }
+
+      // If it is mock data
+      if (productId.startsWith('prod-')) {
+        setProducts(prev => prev.map(p => {
+          if (p.id === productId) {
+            return {
+              ...p,
+              name: productData.name,
+              price: productData.price,
+              category: productData.category,
+              description: productData.description,
+              image: imageUrl || p.image,
+              specs: productData.specs,
+              features: productData.features,
+              stock: productData.stock,
+              isFeatured: productData.isFeatured,
+              isNsfw: productData.isNsfw
+            };
+          }
+          return p;
+        }));
+        return { success: true };
+      }
+
+      const updatePayload: any = {
+        name: productData.name,
+        price: productData.price,
+        category: productData.category,
+        description: productData.description,
+        specs: productData.specs,
+        features: productData.features,
+        stock: productData.stock,
+        is_featured: productData.isFeatured,
+        is_nsfw: productData.isNsfw
+      };
+
+      if (imageUrl) {
+        updatePayload.image_url = imageUrl;
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .update(updatePayload)
+        .eq('id', productId)
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      await refreshProducts();
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Lỗi không xác định khi cập nhật sản phẩm' };
+    }
+  };
+
   const placeOrder = async (shippingDetails: any) => {
     const orderId = 'ORD-' + Math.floor(Math.random() * 900000 + 100000);
     const shippingFee = cartTotal > 200 ? 0 : 15.00;
@@ -671,7 +780,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchAllOrders,
       updateOrderStatus,
       addProduct,
-      deleteProduct
+      deleteProduct,
+      updateProduct
     }}>
       {children}
     </StoreContext.Provider>

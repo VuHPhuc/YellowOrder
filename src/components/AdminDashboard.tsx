@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
+import type { Product } from '../context/StoreContext';
 import { 
   Package, 
   ListOrdered, 
   Plus, 
   Trash2, 
+  Edit,
   Upload, 
   Settings, 
   CheckCircle, 
@@ -23,6 +25,7 @@ export const AdminDashboard: React.FC = () => {
     updateOrderStatus, 
     addProduct, 
     deleteProduct,
+    updateProduct,
     setActiveView 
   } = useStore();
 
@@ -51,6 +54,20 @@ export const AdminDashboard: React.FC = () => {
 
   // Features Builder State
   const [features, setFeatures] = useState<string[]>(['']);
+
+  // Edit Product State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editStock, setEditStock] = useState('');
+  const [editCategory, setEditCategory] = useState('Audio');
+  const [editDescription, setEditDescription] = useState('');
+  const [editIsFeatured, setEditIsFeatured] = useState(false);
+  const [editIsNsfw, setEditIsNsfw] = useState(false);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState('');
+  const [editSpecs, setEditSpecs] = useState<{ key: string; value: string }[]>([]);
+  const [editFeatures, setEditFeatures] = useState<string[]>([]);
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
@@ -135,7 +152,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const deleteSpecRow = (index: number) => {
-    setSpecs(specs.filter((_, i) => i !== index));
+    setSpecs(specs.filter((_, i: number) => i !== index));
   };
 
   // Features helper functions
@@ -150,7 +167,130 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const deleteFeatureRow = (index: number) => {
-    setFeatures(features.filter((_, i) => i !== index));
+    setFeatures(features.filter((_, i: number) => i !== index));
+  };
+
+  // Start Edit Mode and Populate States
+  const handleStartEdit = (prod: Product) => {
+    setEditingProduct(prod);
+    setEditName(prod.name);
+    setEditPrice(prod.price.toString());
+    setEditStock(prod.stock.toString());
+    setEditCategory(prod.category);
+    setEditDescription(prod.description || '');
+    setEditIsFeatured(!!prod.isFeatured);
+    setEditIsNsfw(!!prod.isNsfw);
+    setEditImageFile(null);
+    setEditImagePreview(prod.image);
+    
+    const specsArr = Object.entries(prod.specs || {}).map(([key, value]) => ({
+      key,
+      value: value as string
+    }));
+    setEditSpecs(specsArr.length > 0 ? specsArr : [{ key: '', value: '' }]);
+    setEditFeatures(prod.features && prod.features.length > 0 ? prod.features : ['']);
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditImageFile(file);
+      setEditImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleClearEditImage = () => {
+    setEditImageFile(null);
+    setEditImagePreview('');
+  };
+
+  const addEditSpecRow = () => {
+    setEditSpecs([...editSpecs, { key: '', value: '' }]);
+  };
+
+  const updateEditSpecRow = (index: number, field: 'key' | 'value', val: string) => {
+    const updated = [...editSpecs];
+    updated[index][field] = val;
+    setEditSpecs(updated);
+  };
+
+  const deleteEditSpecRow = (index: number) => {
+    setEditSpecs(editSpecs.filter((_, i: number) => i !== index));
+  };
+
+  const addEditFeatureRow = () => {
+    setEditFeatures([...editFeatures, '']);
+  };
+
+  const updateEditFeatureRow = (index: number, val: string) => {
+    const updated = [...editFeatures];
+    updated[index] = val;
+    setEditFeatures(updated);
+  };
+
+  const deleteEditFeatureRow = (index: number) => {
+    setEditFeatures(editFeatures.filter((_, i: number) => i !== index));
+  };
+
+  const handleUpdateProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccessMsg('');
+    setErrorMsg('');
+
+    if (!editName.trim()) {
+      setErrorMsg('Vui lòng nhập tên sản phẩm.');
+      return;
+    }
+
+    const priceNum = parseFloat(editPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setErrorMsg('Giá sản phẩm phải là một số lớn hơn 0.');
+      return;
+    }
+
+    const stockNum = parseInt(editStock);
+    if (isNaN(stockNum) || stockNum < 0) {
+      setErrorMsg('Số lượng tồn kho không được âm.');
+      return;
+    }
+
+    setLoading(true);
+
+    const specsObj: Record<string, string> = {};
+    editSpecs.forEach((s: any) => {
+      if (s.key.trim() && s.value.trim()) {
+        specsObj[s.key.trim()] = s.value.trim();
+      }
+    });
+
+    const filteredFeatures = editFeatures.filter((f: string) => f.trim() !== '');
+
+    const productPayload = {
+      name: editName.trim(),
+      price: priceNum,
+      category: editCategory,
+      description: editDescription.trim(),
+      specs: specsObj,
+      features: filteredFeatures,
+      stock: stockNum,
+      isFeatured: editIsFeatured,
+      isNsfw: editIsNsfw
+    };
+
+    try {
+      if (!editingProduct) return;
+      const result = await updateProduct(editingProduct.id, productPayload, editImageFile || undefined);
+      if (result.success) {
+        setSuccessMsg(`Đã cập nhật sản phẩm "${editName}" thành công!`);
+        setEditingProduct(null);
+      } else {
+        setErrorMsg(result.error || 'Đã xảy ra lỗi khi cập nhật sản phẩm.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Lỗi không xác định.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Submit Product Form
@@ -180,13 +320,13 @@ export const AdminDashboard: React.FC = () => {
 
     // Transform specs and features
     const specsObj: Record<string, string> = {};
-    specs.forEach(s => {
+    specs.forEach((s: any) => {
       if (s.key.trim() && s.value.trim()) {
         specsObj[s.key.trim()] = s.value.trim();
       }
     });
 
-    const filteredFeatures = features.filter(f => f.trim() !== '');
+    const filteredFeatures = features.filter((f: string) => f.trim() !== '');
 
     const productPayload = {
       name: prodName.trim(),
@@ -506,24 +646,45 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                      disabled={loading}
-                      style={{
-                        padding: '8px',
-                        color: '#ef4444',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        borderRadius: '6px',
-                        transition: 'background var(--transition-fast)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      title="Xóa sản phẩm"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleStartEdit(prod)}
+                        disabled={loading}
+                        style={{
+                          padding: '8px',
+                          color: 'var(--primary)',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          transition: 'background var(--transition-fast)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-glow)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        title="Chỉnh sửa sản phẩm"
+                      >
+                        <Edit size={18} />
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                        disabled={loading}
+                        style={{
+                          padding: '8px',
+                          color: '#ef4444',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          transition: 'background var(--transition-fast)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        title="Xóa sản phẩm"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -715,7 +876,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {specs.map((spec, index) => (
+                    {specs.map((spec: any, index: number) => (
                       <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <input 
                           type="text" 
@@ -760,7 +921,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {features.map((feat, index) => (
+                    {features.map((feat: string, index: number) => (
                       <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <input 
                           type="text" 
@@ -805,6 +966,310 @@ export const AdminDashboard: React.FC = () => {
 
         </main>
       </div>
+
+      {/* Product Edit Modal Overlay */}
+      {editingProduct && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(9, 13, 22, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} className="animate-fade-in">
+          <div className="card" style={{
+            maxWidth: '750px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '32px',
+            boxShadow: 'var(--shadow-xl)',
+            border: '1.5px solid var(--primary)',
+            background: 'var(--bg-card)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit size={20} style={{ color: 'var(--primary)' }} /> Chỉnh sửa sản phẩm: <span style={{ color: 'var(--primary)' }}>{editingProduct.name}</span>
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setEditingProduct(null)} 
+                style={{ padding: '6px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Row 1 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label className="label">Tên sản phẩm *</label>
+                  <input 
+                    type="text" 
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="input-field" 
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Giá sản phẩm (USD) *</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0.01"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="input-field" 
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Tồn kho *</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={editStock}
+                    onChange={(e) => setEditStock(e.target.value)}
+                    className="input-field" 
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'center' }}>
+                <div>
+                  <label className="label">Danh mục sản phẩm *</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="Audio">Audio</option>
+                    <option value="Keyboards">Keyboards</option>
+                    <option value="Wearables">Wearables</option>
+                    <option value="Monitors">Monitors</option>
+                    <option value="Lifestyle">Lifestyle</option>
+                    <option value="Travel">Travel</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '20px', paddingTop: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                    <input 
+                      type="checkbox"
+                      checked={editIsFeatured}
+                      onChange={(e) => setEditIsFeatured(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontWeight: 600 }}>Sản phẩm nổi bật</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                    <input 
+                      type="checkbox"
+                      checked={editIsNsfw}
+                      onChange={(e) => setEditIsNsfw(e.target.checked)}
+                      style={{ accentColor: '#ef4444', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontWeight: 600, color: editIsNsfw ? '#ef4444' : 'inherit' }}>Giới hạn 18+ (NSFW)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="label">Mô tả sản phẩm</label>
+                <textarea 
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="input-field"
+                  style={{ height: '80px', resize: 'vertical', padding: '12px' }}
+                />
+              </div>
+
+              {/* Image Selection */}
+              <div>
+                <label className="label">Hình ảnh sản phẩm (Để trống nếu giữ nguyên)</label>
+                <div style={{
+                  border: '2px dashed var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '16px',
+                  textAlign: 'center',
+                  backgroundColor: 'var(--bg-input)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  position: 'relative'
+                }}>
+                  {editImagePreview ? (
+                    <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <img src={editImagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button 
+                        type="button"
+                        onClick={handleClearEditImage}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          backgroundColor: 'rgba(0,0,0,0.6)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload size={24} style={{ color: 'var(--text-muted)' }} />
+                      <div>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Chọn ảnh mới để thay đổi</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleEditImageChange}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          opacity: 0,
+                          cursor: 'pointer'
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Specs Editor */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="label" style={{ marginBottom: 0 }}>Thông số kỹ thuật</label>
+                  <button 
+                    type="button" 
+                    onClick={addEditSpecRow}
+                    style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Plus size={14} /> Thêm dòng
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {editSpecs.map((spec: any, index: number) => (
+                    <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input 
+                        type="text" 
+                        value={spec.key}
+                        onChange={(e) => updateEditSpecRow(index, 'key', e.target.value)}
+                        className="input-field" 
+                        style={{ flex: 1, height: '38px' }} 
+                        placeholder="Thông số"
+                      />
+                      <input 
+                        type="text" 
+                        value={spec.value}
+                        onChange={(e) => updateEditSpecRow(index, 'value', e.target.value)}
+                        className="input-field" 
+                        style={{ flex: 1.5, height: '38px' }} 
+                        placeholder="Giá trị"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => deleteEditSpecRow(index)}
+                        style={{ color: '#ef4444', padding: '6px', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Features Editor */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="label" style={{ marginBottom: 0 }}>Các tính năng nổi bật</label>
+                  <button 
+                    type="button" 
+                    onClick={addEditFeatureRow}
+                    style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Plus size={14} /> Thêm tính năng
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {editFeatures.map((feat: string, index: number) => (
+                    <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input 
+                        type="text" 
+                        value={feat}
+                        onChange={(e) => updateEditFeatureRow(index, e.target.value)}
+                        className="input-field" 
+                        style={{ flex: 1, height: '38px' }} 
+                        placeholder="Tính năng"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => deleteEditFeatureRow(index)}
+                        style={{ color: '#ef4444', padding: '6px', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons Row */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: '44px', fontWeight: 700 }}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                  style={{ flex: 1, height: '44px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  {loading ? <span className="loading-spinner"></span> : <><Sparkles size={16} /> Lưu thay đổi</>}
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

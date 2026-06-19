@@ -13,6 +13,7 @@ export const LoginRegister: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +45,7 @@ export const LoginRegister: React.FC = () => {
         if (signUpError) {
           setError(signUpError.message || 'Đăng ký thất bại. Vui lòng thử lại.');
         } else {
-          alert('Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.');
-          setActiveTab('login');
-          setPassword('');
+          setShowSuccessModal(true);
         }
       }
     } catch (err: any) {
@@ -287,6 +286,91 @@ export const LoginRegister: React.FC = () => {
         </form>
 
       </div>
+
+      {/* Elegant Custom Registration Success Modal */}
+      {showSuccessModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(9, 13, 22, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} className="animate-fade-in">
+          <div className="card" style={{
+            maxWidth: '500px',
+            width: '100%',
+            padding: '36px',
+            textAlign: 'center',
+            boxShadow: 'var(--shadow-xl)',
+            border: '1.5px solid var(--primary)',
+            background: 'var(--bg-card)'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--primary-glow)',
+              color: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+              boxShadow: '0 0 20px var(--primary-glow-strong)'
+            }}>
+              <Mail size={32} />
+            </div>
+
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '12px' }}>Đăng Ký Thành Công! 🎉</h3>
+            
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '20px', textAlign: 'left' }}>
+              Tài khoản của bạn đã được khởi tạo thành công trên hệ thống. Vui lòng thực hiện bước tiếp theo để hoàn tất kích hoạt tài khoản.
+            </p>
+
+            <div style={{
+              backgroundColor: 'var(--bg-input)',
+              padding: '18px',
+              borderRadius: 'var(--radius-md)',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              borderLeft: '4px solid var(--primary)',
+              marginBottom: '24px',
+              lineHeight: 1.5
+            }}>
+              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                📧 Hướng dẫn xác thực tài khoản Gmail:
+              </strong>
+              <ul style={{ margin: '0 0 0 16px', padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <li>Vui lòng kiểm tra hộp thư đến (hoặc thư rác/spam) của địa chỉ email vừa đăng ký.</li>
+                <li>Nhấp vào liên kết xác thực để kích hoạt tài khoản của bạn.</li>
+                <li style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                  <em>Chú ý quan trọng:</em> Khi bấm vào link xác thực, trang web chuyển hướng của Supabase có thể hiển thị như bị lỗi hoặc trống. Tuy nhiên tài khoản của bạn thực chất đã được xác thực thành công. Bạn chỉ cần quay lại trang đăng nhập của YellowOrder và đăng nhập lại là sẽ hoạt động bình thường!
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                setActiveTab('login');
+                setPassword('');
+              }}
+              className="btn btn-primary"
+              style={{ width: '100%', height: '46px', fontWeight: 700 }}
+            >
+              Tôi đã hiểu, đi tới Đăng nhập
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
