@@ -26,6 +26,7 @@ export const AdminDashboard: React.FC = () => {
     allOrders, 
     fetchAllOrders, 
     updateOrderStatus, 
+    deleteOrder,
     addProduct, 
     deleteProduct,
     updateProduct,
@@ -745,16 +746,14 @@ export const AdminDashboard: React.FC = () => {
                           </td>
                           <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{order.date}</td>
                           <td style={{ padding: '14px 16px' }}>
-                            <span className={`badge ${
-                              order.status === 'delivered' ? 'badge-yellow' : 
-                              order.status === 'shipped' ? 'badge-yellow' : ''
-                            }`} style={{ 
+                            <span className={`badge`} style={{ 
                               fontSize: '0.7rem',
-                              backgroundColor: order.status === 'delivered' ? '#10b981' : order.status === 'shipped' ? '#3b82f6' : 'rgba(234,179,8,0.2)',
-                              color: order.status === 'delivered' || order.status === 'shipped' ? '#fff' : 'var(--primary)'
+                              backgroundColor: order.status === 'delivered' ? '#10b981' : order.status === 'shipped' ? '#3b82f6' : order.status === 'cancelled' ? '#ef4444' : 'rgba(234,179,8,0.2)',
+                              color: order.status === 'delivered' || order.status === 'shipped' || order.status === 'cancelled' ? '#fff' : 'var(--primary)'
                             }}>
                               {order.status === 'delivered' ? 'Đã giao' : 
-                               order.status === 'shipped' ? 'Đang giao' : 'Đang xử lý'}
+                               order.status === 'shipped' ? 'Đang giao' : 
+                               order.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
                             </span>
                           </td>
                           <td style={{ padding: '14px 16px', textAlign: 'right' }}>
@@ -2001,25 +2000,65 @@ export const AdminDashboard: React.FC = () => {
                     <option value="processing">Đang xử lý</option>
                     <option value="shipped">Đang giao</option>
                     <option value="delivered">Đã giao</option>
+                    <option value="cancelled">Đã hủy</option>
                   </select>
                   <span className={`badge`} style={{
                     fontSize: '0.75rem',
                     height: '24px',
-                    backgroundColor: viewingOrder.status === 'delivered' ? '#10b981' : viewingOrder.status === 'shipped' ? '#3b82f6' : 'rgba(234,179,8,0.2)',
-                    color: viewingOrder.status === 'delivered' || viewingOrder.status === 'shipped' ? '#fff' : 'var(--primary)'
+                    backgroundColor: viewingOrder.status === 'delivered' ? '#10b981' : viewingOrder.status === 'shipped' ? '#3b82f6' : viewingOrder.status === 'cancelled' ? '#ef4444' : 'rgba(234,179,8,0.2)',
+                    color: viewingOrder.status === 'delivered' || viewingOrder.status === 'shipped' || viewingOrder.status === 'cancelled' ? '#fff' : 'var(--primary)'
                   }}>
-                    {viewingOrder.status === 'delivered' ? 'Đã giao' : viewingOrder.status === 'shipped' ? 'Đang giao' : 'Đang xử lý'}
+                    {viewingOrder.status === 'delivered' ? 'Đã giao' : viewingOrder.status === 'shipped' ? 'Đang giao' : viewingOrder.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
                   </span>
                 </div>
               </div>
 
-              <button 
-                onClick={() => setViewingOrder(null)} 
-                className="btn btn-primary"
-                style={{ padding: '10px 24px', fontWeight: 700, height: '40px' }}
-              >
-                Đóng
-              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa đơn hàng "${viewingOrder.id}" khỏi hệ thống không? Hành động này không thể hoàn tác.`)) {
+                      setLoading(true);
+                      const res = await deleteOrder(viewingOrder.id);
+                      setLoading(false);
+                      if (res.success) {
+                        setViewingOrder(null);
+                        setSuccessMsg(`Đã xóa đơn hàng ${viewingOrder.id} thành công!`);
+                      } else {
+                        setErrorMsg(`Lỗi khi xóa đơn hàng: ${res.error}`);
+                      }
+                    }
+                  }}
+                  className="btn"
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    height: '40px',
+                    fontWeight: 700,
+                    padding: '10px 20px',
+                    borderRadius: 'var(--radius-md)',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                  }}
+                >
+                  Xóa đơn hàng
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setViewingOrder(null)} 
+                  className="btn btn-primary"
+                  style={{ padding: '10px 24px', fontWeight: 700, height: '40px' }}
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         </div>

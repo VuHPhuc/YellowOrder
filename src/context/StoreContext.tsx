@@ -38,7 +38,7 @@ export interface Order {
   total: number;
   shipping: any;
   date: string;
-  status: 'processing' | 'shipped' | 'delivered';
+  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
 }
 
 interface StoreContextType {
@@ -85,7 +85,8 @@ interface StoreContextType {
   refreshProducts: () => Promise<void>;
   allOrders: Order[];
   fetchAllOrders: () => Promise<void>;
-  updateOrderStatus: (orderId: string, status: 'processing' | 'shipped' | 'delivered') => Promise<void>;
+  updateOrderStatus: (orderId: string, status: 'processing' | 'shipped' | 'delivered' | 'cancelled') => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
   addProduct: (
     productData: {
       name: string;
@@ -452,7 +453,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'processing' | 'shipped' | 'delivered') => {
+  const updateOrderStatus = async (orderId: string, status: 'processing' | 'shipped' | 'delivered' | 'cancelled') => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -470,6 +471,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Lỗi kết nối khi cập nhật đơn hàng:', err);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    try {
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (itemsError) {
+        console.error('Lỗi khi xóa chi tiết đơn hàng:', itemsError.message);
+        return { success: false, error: itemsError.message };
+      }
+
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (orderError) {
+        console.error('Lỗi khi xóa đơn hàng:', orderError.message);
+        return { success: false, error: orderError.message };
+      }
+
+      setAllOrders(prev => prev.filter(o => o.id !== orderId));
+      return { success: true };
+    } catch (err: any) {
+      console.error('Lỗi kết nối khi xóa đơn hàng:', err);
+      return { success: false, error: err.message || 'Lỗi kết nối' };
     }
   };
 
@@ -940,6 +971,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       allOrders,
       fetchAllOrders,
       updateOrderStatus,
+      deleteOrder,
       addProduct,
       deleteProduct,
       updateProduct

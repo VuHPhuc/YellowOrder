@@ -180,7 +180,7 @@ export const ProductDetails: React.FC = () => {
             <ShieldCheck size={28} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ textAlign: 'left' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block' }}>Cam kết từ YellowOrder</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Bảo hành chính hãng 24 tháng. Đổi mới 1-đổi-1 nếu phát sinh lỗi phần cứng từ nhà sản xuất.</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cam kết sản phẩm chính hãng 100%. Nhập khẩu trực tiếp từ Nhật Bản. Đóng gói cẩn thận chống móp méo hộp.</span>
             </div>
           </div>
         </div>
@@ -191,7 +191,11 @@ export const ProductDetails: React.FC = () => {
           {/* Metadata */}
           <div>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Thiết bị {selectedProduct.category}
+              {selectedProduct.category === 'Figure' ? 'Figure / Mô hình' :
+               selectedProduct.category === 'Food' ? 'Đồ ăn / Bánh kẹo' :
+               selectedProduct.category === 'Books' ? 'Sách / Manga' :
+               selectedProduct.category === 'Goods' ? 'Đồ dùng Nhật Bản' :
+               selectedProduct.category === 'Cosmetics' ? 'Mỹ phẩm / Làm đẹp' : selectedProduct.category}
             </span>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, marginTop: '6px', marginBottom: '12px', lineHeight: 1.2 }}>
               {selectedProduct.name}

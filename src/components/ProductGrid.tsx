@@ -40,7 +40,12 @@ export const ProductGrid: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '32px', textAlign: 'left' }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-            {selectedCategory === 'All' ? 'Tất cả sản phẩm' : `Thiết bị ${selectedCategory}`}
+            {selectedCategory === 'All' ? 'Tất cả sản phẩm' : 
+             selectedCategory === 'Figure' ? 'Figure / Mô hình' :
+             selectedCategory === 'Food' ? 'Đồ ăn / Bánh kẹo' :
+             selectedCategory === 'Books' ? 'Sách / Manga' :
+             selectedCategory === 'Goods' ? 'Đồ dùng Nhật Bản' :
+             selectedCategory === 'Cosmetics' ? 'Mỹ phẩm / Làm đẹp' : selectedCategory}
           </h2>
           {searchQuery && (
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
