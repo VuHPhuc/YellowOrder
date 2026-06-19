@@ -66,14 +66,13 @@ export const Hero: React.FC = () => {
             
             <h1 style={{ 
               fontSize: 'clamp(2.2rem, 5vw, 3.5rem)', 
-              lineHeight: 1.15, 
+              lineHeight: 1.2, 
               color: '#ffffff',
               fontWeight: 800,
               letterSpacing: '-1.5px',
               margin: 0
             }}>
-              Thế Giới<br />
-              <span className="animated-gradient-text">Figure &</span><br />
+              Thế Giới <span className="animated-gradient-text">Figure &</span><br />
               <span className="animated-gradient-text">Đồ Nhật Bản</span>
             </h1>
             
