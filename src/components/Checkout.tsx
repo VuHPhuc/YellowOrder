@@ -110,16 +110,7 @@ export const Checkout: React.FC = () => {
       <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '32px' }}>Thông tin thanh toán</h2>
 
       {/* Main Layout Grid */}
-      <form onSubmit={handleSubmit} style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 400px',
-        gap: '40px',
-        alignItems: 'start',
-        // Responsive collapse
-        '@media (max-width: 900px)': {
-          gridTemplateColumns: '1fr'
-        }
-      } as any}>
+      <form onSubmit={handleSubmit} className="grid-checkout-layout">
         
         {/* Left Column - Shipping & Billing Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -130,7 +121,7 @@ export const Checkout: React.FC = () => {
               <CheckCircle size={18} style={{ color: 'var(--primary)' }} /> 1. Địa chỉ giao hàng
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="form-row-grid">
               <div>
                 <label className="label">Họ và tên *</label>
                 <input
@@ -170,7 +161,7 @@ export const Checkout: React.FC = () => {
               {errors.email && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '4px', display: 'block' }}>{errors.email}</span>}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+            <div className="form-row-grid-3">
               <div>
                 <label className="label">Địa chỉ nhận hàng *</label>
                 <input

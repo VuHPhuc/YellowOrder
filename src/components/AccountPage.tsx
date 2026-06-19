@@ -26,16 +26,7 @@ export const AccountPage: React.FC = () => {
     <div className="container animate-fade-in" style={{ padding: '40px 0 80px 0', textAlign: 'left' }}>
       <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '24px' }}>Trang cá nhân</h2>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '320px 1fr',
-        gap: '32px',
-        alignItems: 'start',
-        // Responsive
-        '@media (max-width: 900px)': {
-          gridTemplateColumns: '1fr'
-        }
-      } as any}>
+      <div className="grid-account-layout">
 
         {/* User profile card */}
         <aside className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

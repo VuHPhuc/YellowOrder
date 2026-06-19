@@ -50,17 +50,7 @@ export const CartPage: React.FC = () => {
       {/* Title */}
       <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '24px' }}>Giỏ hàng của bạn</h2>
 
-      {/* Cart Grid Layout */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 360px',
-        gap: '32px',
-        alignItems: 'start',
-        // Responsive collapse on mobile
-        '@media (max-width: 900px)': {
-          gridTemplateColumns: '1fr'
-        }
-      } as any}>
+      <div className="grid-cart-layout">
         
         {/* Left Column - Cart Items List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

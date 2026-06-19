@@ -58,12 +58,7 @@ export const ProductDetails: React.FC = () => {
       </button>
 
       {/* Product Detail Columns */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-        gap: '48px',
-        alignItems: 'start'
-      }}>
+      <div className="product-detail-layout">
         
         {/* Left Column - Large Image */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -162,7 +157,7 @@ export const ProductDetails: React.FC = () => {
           {/* Feature Highlights Bullet Points */}
           <div>
             <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px' }}>Tính năng nổi bật</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="form-row-grid" style={{ gap: '10px' }}>
               {selectedProduct.features.map((feature, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                   <div style={{

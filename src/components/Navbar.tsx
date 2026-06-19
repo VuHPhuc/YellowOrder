@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="glass-header">
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '80px', gap: '20px' }}>
+      <div className="container navbar-wrapper">
         
         {/* Brand Logo */}
         <div 

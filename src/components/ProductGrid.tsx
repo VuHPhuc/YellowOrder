@@ -62,17 +62,7 @@ export const ProductGrid: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid & Filters Container */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '260px 1fr',
-        gap: '32px',
-        alignItems: 'start',
-        // Responsive collapse for sidebar on smaller screens
-        '@media (max-width: 900px)': {
-          gridTemplateColumns: '1fr'
-        }
-      } as any}>
+      <div className="grid-sidebar-layout">
         
         {/* Left Sidebar Filter Panel */}
         <aside className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px', textAlign: 'left', position: 'sticky', top: '100px' }}>
