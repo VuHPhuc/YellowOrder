@@ -11,7 +11,7 @@ export const Hero: React.FC = () => {
   };
 
   return (
-    <section className="animate-fade-in" style={{ padding: '40px 0 60px 0' }}>
+    <section className="container animate-fade-in" style={{ padding: '40px 0 60px 0' }}>
       
       {/* Banner Card */}
       <div className="card" style={{

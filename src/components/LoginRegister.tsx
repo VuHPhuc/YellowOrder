@@ -73,7 +73,16 @@ export const LoginRegister: React.FC = () => {
   };
 
   return (
-    <div className="container" style={{ padding: '60px 0 100px 0', display: 'flex', justifyContent: 'center' }}>
+    <div 
+      className="container" 
+      style={{ 
+        padding: '60px 0 100px 0', 
+        display: 'flex', 
+        justifyContent: 'center',
+        position: showSuccessModal ? 'relative' : 'static',
+        zIndex: showSuccessModal ? 1001 : 'auto'
+      }}
+    >
       
       {/* Form Container Card */}
       <div className="card animate-fade-in" style={{
@@ -289,23 +298,33 @@ export const LoginRegister: React.FC = () => {
 
       {/* Elegant Custom Registration Success Modal */}
       {showSuccessModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(9, 13, 22, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }} className="animate-fade-in">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSuccessModal(false);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(9, 13, 22, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            overflowY: 'auto'
+          }} 
+          className="animate-fade-in"
+        >
           <div className="card" style={{
             maxWidth: '500px',
             width: '100%',
+            margin: '40px auto',
             padding: '36px',
             textAlign: 'center',
             boxShadow: 'var(--shadow-xl)',

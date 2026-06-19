@@ -386,7 +386,15 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ padding: '40px 0 80px 0', textAlign: 'left' }}>
+    <div 
+      className="container animate-fade-in" 
+      style={{ 
+        padding: '40px 0 80px 0', 
+        textAlign: 'left',
+        position: editingProduct ? 'relative' : 'static',
+        zIndex: editingProduct ? 1001 : 'auto'
+      }}
+    >
       
       {/* Dashboard Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '32px' }}>
@@ -968,25 +976,33 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Product Edit Modal Overlay */}
       {editingProduct && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(9, 13, 22, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }} className="animate-fade-in">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setEditingProduct(null);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(9, 13, 22, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            overflowY: 'auto'
+          }} 
+          className="animate-fade-in"
+        >
           <div className="card" style={{
             maxWidth: '750px',
             width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
+            margin: '40px auto',
             padding: '32px',
             boxShadow: 'var(--shadow-xl)',
             border: '1.5px solid var(--primary)',

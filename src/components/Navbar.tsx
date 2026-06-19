@@ -17,6 +17,21 @@ export const Navbar: React.FC = () => {
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -165,7 +180,7 @@ export const Navbar: React.FC = () => {
             {/* User Account / Profile - Desktop Only */}
             <div className="desktop-only">
               {currentUser ? (
-                <div style={{ position: 'relative' }}>
+                <div ref={profileMenuRef} style={{ position: 'relative' }}>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     style={{

@@ -33,7 +33,7 @@ export const ProductGrid: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: '20px 0 60px 0' }}>
+    <div className="container animate-fade-in" style={{ padding: '20px 0 60px 0' }}>
       
       {/* Title / Search Indicator */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '32px', textAlign: 'left' }}>
