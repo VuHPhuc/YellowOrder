@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import type { Product } from '../context/StoreContext';
+import type { Product, Order } from '../context/StoreContext';
 import { supabase } from '../utils/supabase';
-import { formatPrice, convertJpyToVnd } from '../utils/currency';
+import { formatPrice, convertJpyToVnd, convertVndToJpy, formatWithDots } from '../utils/currency';
 import { 
   Package, 
   ListOrdered, 
@@ -40,6 +40,9 @@ export const AdminDashboard: React.FC = () => {
   // User/Account State
   const [profiles, setProfiles] = useState<any[]>([]);
   const [fetchingProfiles, setFetchingProfiles] = useState(false);
+
+  // Order Details Modal State
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
   // Add Product Form State
   const [prodName, setProdName] = useState('');
@@ -153,6 +156,7 @@ export const AdminDashboard: React.FC = () => {
     if (currentUser?.role === 'admin') {
       if (activeTab === 'orders') {
         fetchAllOrders();
+        fetchProfiles();
       } else if (activeTab === 'accounts') {
         fetchProfiles();
       }
@@ -283,8 +287,8 @@ export const AdminDashboard: React.FC = () => {
   const handleStartEdit = (prod: Product) => {
     setEditingProduct(prod);
     setEditName(prod.name);
-    setEditPrice(prod.price.toString());
-    setEditPriceJpy('');
+    setEditPrice(formatWithDots(prod.price.toString()));
+    setEditPriceJpy(formatWithDots(convertVndToJpy(prod.price).toString()));
     setEditStock(prod.stock.toString());
     setEditCategory(prod.category);
     setEditDescription(prod.description || '');
@@ -375,7 +379,7 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const priceNum = parseFloat(editPrice);
+    const priceNum = parseInt(editPrice.replace(/\D/g, ''), 10);
     if (isNaN(priceNum) || priceNum <= 0) {
       setErrorMsg('Giá sản phẩm phải là một số lớn hơn 0.');
       return;
@@ -438,7 +442,7 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const priceNum = parseFloat(prodPrice);
+    const priceNum = parseInt(prodPrice.replace(/\D/g, ''), 10);
     if (isNaN(priceNum) || priceNum <= 0) {
       setErrorMsg('Giá sản phẩm phải là một số lớn hơn 0.');
       return;
@@ -566,6 +570,7 @@ export const AdminDashboard: React.FC = () => {
               setSuccessMsg('');
               setErrorMsg('');
               fetchAllOrders();
+              fetchProfiles();
             }}
             style={{
               display: 'flex',
@@ -699,7 +704,7 @@ export const AdminDashboard: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Quản lý Đơn hàng ({allOrders.length})</h3>
                 <button 
-                  onClick={fetchAllOrders} 
+                  onClick={() => { fetchAllOrders(); fetchProfiles(); }} 
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
                   title="Làm mới đơn hàng"
                 >
@@ -730,7 +735,9 @@ export const AdminDashboard: React.FC = () => {
                         <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition-fast)' }}>
                           <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--primary)' }}>{order.id}</td>
                           <td style={{ padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 600 }}>{order.shipping?.fullName || 'Khách hàng ẩn danh'}</div>
+                            <div style={{ fontWeight: 600 }}>
+                              {order.shipping?.name || order.shipping?.fullName || (profiles.find(p => p.id === order.user_id)?.name) || 'Khách hàng ẩn danh'}
+                            </div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{order.shipping?.phone || 'Không có SĐT'}</div>
                           </td>
                           <td style={{ padding: '14px 16px', fontWeight: 700 }}>
@@ -751,16 +758,13 @@ export const AdminDashboard: React.FC = () => {
                             </span>
                           </td>
                           <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                            <select
-                              value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
-                              className="input-field"
-                              style={{ width: '120px', height: '32px', padding: '0 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                            <button
+                              onClick={() => setViewingOrder(order)}
+                              className="btn btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, height: '32px' }}
                             >
-                              <option value="processing">Đang xử lý</option>
-                              <option value="shipped">Đang giao</option>
-                              <option value="delivered">Đã giao</option>
-                            </select>
+                              Chi tiết
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -887,34 +891,48 @@ export const AdminDashboard: React.FC = () => {
                   <div>
                     <label className="label">Giá sản phẩm (VND) *</label>
                     <input 
-                      type="number" 
-                      min="1"
+                      type="text" 
                       value={prodPrice}
-                      onChange={(e) => setProdPrice(e.target.value)}
+                      onChange={(e) => {
+                        const formatted = formatWithDots(e.target.value);
+                        setProdPrice(formatted);
+                        const rawVnd = parseInt(formatted.replace(/\D/g, ''), 10);
+                        if (!isNaN(rawVnd) && rawVnd > 0) {
+                          setProdPriceJpy(formatWithDots(convertVndToJpy(rawVnd).toString()));
+                        } else {
+                          setProdPriceJpy('');
+                        }
+                      }}
                       className="input-field" 
-                      placeholder="Ví dụ: 4500000"
+                      placeholder="Ví dụ: 4.500.000"
                       required
                     />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                      Nhập đến đâu tự động thêm dấu "." và tính quy đổi sang Yên (JPY)
+                    </span>
                   </div>
 
                   <div>
                     <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
                     <input 
-                      type="number" 
-                      min="1"
+                      type="text" 
                       value={prodPriceJpy}
                       onChange={(e) => {
-                        const jpyVal = e.target.value;
-                        setProdPriceJpy(jpyVal);
-                        if (jpyVal && !isNaN(parseFloat(jpyVal))) {
-                          setProdPrice(convertJpyToVnd(parseFloat(jpyVal)).toString());
+                        const formatted = formatWithDots(e.target.value);
+                        setProdPriceJpy(formatted);
+                        const rawJpy = parseInt(formatted.replace(/\D/g, ''), 10);
+                        if (!isNaN(rawJpy) && rawJpy > 0) {
+                          setProdPrice(formatWithDots(convertJpyToVnd(rawJpy).toString()));
                         } else {
                           setProdPrice('');
                         }
                       }}
                       className="input-field" 
-                      placeholder="Ví dụ: 6500"
+                      placeholder="Ví dụ: 6.500"
                     />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                      Nhập Yên sẽ tự động quy đổi sang VND (1 JPY = 160 VND)
+                    </span>
                   </div>
 
                   <div>
@@ -1417,33 +1435,48 @@ export const AdminDashboard: React.FC = () => {
                 <div>
                   <label className="label">Giá sản phẩm (VND) *</label>
                   <input 
-                    type="number" 
-                    min="1"
+                    type="text" 
                     value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
+                    onChange={(e) => {
+                      const formatted = formatWithDots(e.target.value);
+                      setEditPrice(formatted);
+                      const rawVnd = parseInt(formatted.replace(/\D/g, ''), 10);
+                      if (!isNaN(rawVnd) && rawVnd > 0) {
+                        setEditPriceJpy(formatWithDots(convertVndToJpy(rawVnd).toString()));
+                      } else {
+                        setEditPriceJpy('');
+                      }
+                    }}
                     className="input-field" 
+                    placeholder="Ví dụ: 4.500.000"
                     required
                   />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    Nhập đến đâu tự động thêm dấu "." và tính quy đổi sang Yên (JPY)
+                  </span>
                 </div>
 
                 <div>
                   <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
                   <input 
-                    type="number" 
-                    min="1"
+                    type="text" 
                     value={editPriceJpy}
                     onChange={(e) => {
-                      const jpyVal = e.target.value;
-                      setEditPriceJpy(jpyVal);
-                      if (jpyVal && !isNaN(parseFloat(jpyVal))) {
-                        setEditPrice(convertJpyToVnd(parseFloat(jpyVal)).toString());
+                      const formatted = formatWithDots(e.target.value);
+                      setEditPriceJpy(formatted);
+                      const rawJpy = parseInt(formatted.replace(/\D/g, ''), 10);
+                      if (!isNaN(rawJpy) && rawJpy > 0) {
+                        setEditPrice(formatWithDots(convertJpyToVnd(rawJpy).toString()));
                       } else {
                         setEditPrice('');
                       }
                     }}
                     className="input-field" 
-                    placeholder="Ví dụ: 6500"
+                    placeholder="Ví dụ: 6.500"
                   />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    Nhập Yên sẽ tự động quy đổi sang VND (1 JPY = 160 VND)
+                  </span>
                 </div>
 
                 <div>
@@ -1796,6 +1829,198 @@ export const AdminDashboard: React.FC = () => {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal Popup */}
+      {viewingOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '20px',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="card animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '28px',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow-xl)',
+            position: 'relative'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid var(--border-color)',
+              paddingBottom: '16px',
+              marginBottom: '24px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CHI TIẾT ĐƠN HÀNG</span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary)' }}>{viewingOrder.id}</h3>
+              </div>
+              <button 
+                onClick={() => setViewingOrder(null)} 
+                style={{ padding: '6px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '28px',
+              textAlign: 'left'
+            }}>
+              {/* Left Column: Customer & Shipping Details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '12px' }}>
+                    Thông tin khách hàng
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                    <div><strong>Họ và tên:</strong> {viewingOrder.shipping?.name || viewingOrder.shipping?.fullName || (profiles.find(p => p.id === viewingOrder.user_id)?.name) || 'Khách hàng ẩn danh'}</div>
+                    <div><strong>Số điện thoại:</strong> {viewingOrder.shipping?.phone || 'N/A'}</div>
+                    <div><strong>Email:</strong> {viewingOrder.shipping?.email || 'N/A'}</div>
+                    <div><strong>Địa chỉ:</strong> {viewingOrder.shipping?.address || 'N/A'}</div>
+                    <div><strong>Thành phố:</strong> {viewingOrder.shipping?.city || 'N/A'}</div>
+                    <div><strong>Hình thức thanh toán:</strong> {viewingOrder.shipping?.paymentMethod === 'cod' ? 'Thanh toán tiền mặt (COD)' : viewingOrder.shipping?.paymentMethod === 'bank' ? 'Chuyển khoản' : 'Thẻ quốc tế'}</div>
+                  </div>
+                </div>
+
+                {viewingOrder.shipping?.note && (
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      Ghi chú đơn hàng
+                    </h4>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: '6px' }}>
+                      "{viewingOrder.shipping?.note}"
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Right Column: Ordered Items List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                  Sản phẩm đã mua
+                </h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {viewingOrder.items && viewingOrder.items.length > 0 ? (
+                    viewingOrder.items.map(item => (
+                      <div key={item.product.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                        <img 
+                          src={item.product.image} 
+                          alt={item.product.name} 
+                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)', flexShrink: 0 }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h5 style={{ fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'normal', wordBreak: 'break-word' }} title={item.product.name}>
+                            {item.product.name}
+                          </h5>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {item.quantity} x {formatPrice(item.product.price)}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                          {formatPrice(item.product.price * item.quantity)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>Không có chi tiết sản phẩm</div>
+                  )}
+                </div>
+
+                {/* Subtotals & Final sum */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Tạm tính</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {formatPrice(viewingOrder.items ? viewingOrder.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) : viewingOrder.total)}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Vận chuyển</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {viewingOrder.items && viewingOrder.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) > 2000000 ? 'Miễn phí' : formatPrice(30000)}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '4px' }}>
+                    <span>Tổng thanh toán</span>
+                    <span style={{ color: 'var(--primary)' }}>{formatPrice(viewingOrder.total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions & Status Transition */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              borderTop: '1px solid var(--border-color)',
+              paddingTop: '20px',
+              marginTop: '24px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                  Chuyển đổi trạng thái đơn hàng
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <select
+                    value={viewingOrder.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as any;
+                      updateOrderStatus(viewingOrder.id, newStatus);
+                      setViewingOrder(prev => prev ? { ...prev, status: newStatus } : null);
+                    }}
+                    className="input-field"
+                    style={{ width: '160px', height: '40px', padding: '0 12px', fontSize: '0.85rem' }}
+                  >
+                    <option value="processing">Đang xử lý</option>
+                    <option value="shipped">Đang giao</option>
+                    <option value="delivered">Đã giao</option>
+                  </select>
+                  <span className={`badge`} style={{
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    backgroundColor: viewingOrder.status === 'delivered' ? '#10b981' : viewingOrder.status === 'shipped' ? '#3b82f6' : 'rgba(234,179,8,0.2)',
+                    color: viewingOrder.status === 'delivered' || viewingOrder.status === 'shipped' ? '#fff' : 'var(--primary)'
+                  }}>
+                    {viewingOrder.status === 'delivered' ? 'Đã giao' : viewingOrder.status === 'shipped' ? 'Đang giao' : 'Đang xử lý'}
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setViewingOrder(null)} 
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontWeight: 700, height: '40px' }}
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
