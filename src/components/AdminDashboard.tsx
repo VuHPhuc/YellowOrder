@@ -398,7 +398,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div 
-      className="container animate-fade-in" 
+      className="container" 
       style={{ 
         padding: '40px 0 80px 0', 
         textAlign: 'left',
@@ -406,6 +406,7 @@ export const AdminDashboard: React.FC = () => {
         zIndex: editingProduct ? 1001 : 'auto'
       }}
     >
+      <div className="animate-fade-in">
       
       {/* Dashboard Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '32px' }}>
@@ -983,6 +984,7 @@ export const AdminDashboard: React.FC = () => {
           )}
 
         </main>
+      </div>
       </div>
 
       {/* Product Edit Modal Overlay */}
