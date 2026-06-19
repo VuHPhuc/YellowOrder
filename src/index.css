@@ -410,77 +410,56 @@ button {
   align-items: start;
 }
 
-/* Responsive Navbar wrapper */
+/* Responsive Navbar wrapper & Hamburger utilities */
 .navbar-wrapper {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 80px;
   gap: 20px;
+  width: 100%;
 }
 
-@media (max-width: 990px) {
-  .navbar-wrapper {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 16px 24px;
-    gap: 16px;
-    justify-content: space-between;
-  }
-  
-  .navbar-wrapper nav {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    margin-top: 4px;
-  }
-  
-  .navbar-wrapper .search-container {
-    order: 2;
-    max-width: 280px;
-    flex: 1;
-  }
-  
-  .navbar-wrapper > div:first-child {
-    order: 1;
-  }
-
-  .navbar-wrapper > div:last-child {
-    order: 2;
-  }
+.desktop-only {
+  display: flex !important;
 }
 
-@media (max-width: 640px) {
+.mobile-menu-toggle {
+  display: none !important;
+}
+
+.mobile-dropdown {
+  display: none;
+}
+
+@media (max-width: 768px) {
   .navbar-wrapper {
+    height: 70px;
+    gap: 12px;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-menu-toggle {
+    display: flex !important;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    background-color: var(--bg-card);
+  }
+  
+  .mobile-dropdown {
+    display: flex !important;
     flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-    padding: 16px 16px;
-  }
-
-  .navbar-wrapper > div:first-child {
-    justify-content: center;
     width: 100%;
-  }
-
-  .navbar-wrapper .search-container {
-    max-width: 100%;
-    width: 100%;
-    order: 2;
-  }
-
-  .navbar-wrapper > div:last-child {
-    justify-content: space-between;
-    width: 100%;
-    order: 3;
-  }
-
-  .navbar-wrapper nav {
-    order: 4;
-    padding-top: 12px;
+    background-color: var(--bg-card);
     border-top: 1px solid var(--border-color);
+    padding: 16px;
+    gap: 16px;
+    animation: fadeIn 0.25s ease-out;
   }
 }
 
