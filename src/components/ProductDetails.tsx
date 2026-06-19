@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Star, ShoppingCart, ArrowLeft, Check, ShieldCheck, Heart } from 'lucide-react';
 
@@ -7,6 +7,13 @@ export const ProductDetails: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
   const [revealNsfw, setRevealNsfw] = useState(false);
+  const [activeImage, setActiveImage] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setActiveImage(selectedProduct.image);
+    }
+  }, [selectedProduct]);
 
   if (!selectedProduct) {
     return (
@@ -73,7 +80,7 @@ export const ProductDetails: React.FC = () => {
             boxShadow: 'var(--shadow-lg)'
           }}>
             <img 
-              src={selectedProduct.image} 
+              src={activeImage || selectedProduct.image} 
               alt={selectedProduct.name}
               style={{ 
                 width: '100%', 
@@ -134,6 +141,36 @@ export const ProductDetails: React.FC = () => {
               </span>
             )}
           </div>
+
+          {/* Thumbnail Image List / Gallery */}
+          {selectedProduct.images && selectedProduct.images.length > 1 && (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '-4px' }}>
+              {selectedProduct.images.map((imgUrl, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setActiveImage(imgUrl)}
+                  style={{
+                    width: '65px',
+                    height: '65px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: activeImage === imgUrl ? '2.5px solid var(--primary)' : '1px solid var(--border-color)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    backgroundColor: 'var(--bg-input)',
+                    boxShadow: activeImage === imgUrl ? '0 0 8px var(--primary-glow-strong)' : 'none',
+                    transform: activeImage === imgUrl ? 'scale(1.05)' : 'scale(1)'
+                  }}
+                >
+                  <img 
+                    src={imgUrl} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Guarantee Info Box */}
           <div className="card" style={{ display: 'flex', gap: '12px', padding: '16px', alignItems: 'center', backgroundColor: 'var(--bg-input)' }}>

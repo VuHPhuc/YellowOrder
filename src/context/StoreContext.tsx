@@ -10,6 +10,7 @@ export interface Product {
   category: string;
   description: string;
   image: string;
+  images?: string[];
   specs: Record<string, string>;
   features: string[];
   stock: number;
@@ -96,7 +97,8 @@ interface StoreContextType {
       isFeatured: boolean;
       isNsfw: boolean;
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
   updateProduct: (
@@ -111,8 +113,10 @@ interface StoreContextType {
       stock: number;
       isFeatured: boolean;
       isNsfw: boolean;
+      existingImages?: string[];
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
 }
 
@@ -252,6 +256,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           category: p.category,
           description: p.description || '',
           image: p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+          images: p.image_urls || (p.image_url ? [p.image_url] : []),
           specs: p.specs || {},
           features: p.features || [],
           stock: p.stock || 0,
@@ -473,7 +478,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isFeatured: boolean;
       isNsfw: boolean;
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => {
     try {
       let imageUrl = '';
@@ -497,6 +503,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         imageUrl = urlData.publicUrl;
       }
 
+      // Upload sub images
+      const subImageUrls: string[] = [];
+      if (subImageFiles && subImageFiles.length > 0) {
+        for (const file of subImageFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+          const filePath = `products/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Lỗi tải ảnh phụ:', uploadError.message);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          subImageUrls.push(urlData.publicUrl);
+        }
+      }
+
+      const allImageUrls = imageUrl ? [imageUrl, ...subImageUrls] : subImageUrls;
+
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -505,6 +538,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           category: productData.category,
           description: productData.description,
           image_url: imageUrl || undefined,
+          image_urls: allImageUrls,
           specs: productData.specs,
           features: productData.features,
           stock: productData.stock,
@@ -561,8 +595,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       stock: number;
       isFeatured: boolean;
       isNsfw: boolean;
+      existingImages?: string[];
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => {
     try {
       let imageUrl = '';
@@ -586,6 +622,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         imageUrl = urlData.publicUrl;
       }
 
+      // Upload new sub images
+      const newSubUrls: string[] = [];
+      if (subImageFiles && subImageFiles.length > 0) {
+        for (const file of subImageFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+          const filePath = `products/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Lỗi tải ảnh phụ:', uploadError.message);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          newSubUrls.push(urlData.publicUrl);
+        }
+      }
+
+      const existingUrls = productData.existingImages || [];
+      const finalImageUrl = imageUrl || (existingUrls.length > 0 ? existingUrls[0] : '');
+      const finalImageUrls = imageUrl 
+        ? [imageUrl, ...existingUrls.filter(u => u !== finalImageUrl), ...newSubUrls]
+        : [...existingUrls, ...newSubUrls];
+
       // If it is mock data
       if (productId.startsWith('prod-')) {
         setProducts(prev => prev.map(p => {
@@ -596,7 +663,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               price: productData.price,
               category: productData.category,
               description: productData.description,
-              image: imageUrl || p.image,
+              image: finalImageUrl || p.image,
+              images: finalImageUrls,
               specs: productData.specs,
               features: productData.features,
               stock: productData.stock,
@@ -618,12 +686,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         features: productData.features,
         stock: productData.stock,
         is_featured: productData.isFeatured,
-        is_nsfw: productData.isNsfw
+        is_nsfw: productData.isNsfw,
+        image_url: finalImageUrl || null,
+        image_urls: finalImageUrls
       };
-
-      if (imageUrl) {
-        updatePayload.image_url = imageUrl;
-      }
 
       const { data, error } = await supabase
         .from('products')

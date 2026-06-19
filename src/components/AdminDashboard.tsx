@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import type { Product } from '../context/StoreContext';
+import { supabase } from '../utils/supabase';
 import { 
   Package, 
   ListOrdered, 
@@ -13,7 +14,8 @@ import {
   AlertTriangle,
   RefreshCcw,
   Sparkles,
-  X
+  X,
+  Users
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -29,10 +31,14 @@ export const AdminDashboard: React.FC = () => {
     setActiveView 
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'add-product'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'add-product' | 'accounts'>('orders');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // User/Account State
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [fetchingProfiles, setFetchingProfiles] = useState(false);
 
   // Add Product Form State
   const [prodName, setProdName] = useState('');
@@ -46,6 +52,8 @@ export const AdminDashboard: React.FC = () => {
   // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [subImageFiles, setSubImageFiles] = useState<File[]>([]);
+  const [subImagePreviews, setSubImagePreviews] = useState<string[]>([]);
 
   // Specs Builder State
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([
@@ -68,12 +76,85 @@ export const AdminDashboard: React.FC = () => {
   const [editImagePreview, setEditImagePreview] = useState('');
   const [editSpecs, setEditSpecs] = useState<{ key: string; value: string }[]>([]);
   const [editFeatures, setEditFeatures] = useState<string[]>([]);
+  const [editSubImageFiles, setEditSubImageFiles] = useState<File[]>([]);
+  const [editSubImagePreviews, setEditSubImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+
+  // Fetch profiles for account management
+  const fetchProfiles = async () => {
+    setFetchingProfiles(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) {
+        setErrorMsg('Lỗi tải danh sách tài khoản: ' + error.message);
+      } else if (data) {
+        setProfiles(data);
+      }
+    } catch (err: any) {
+      setErrorMsg('Lỗi kết nối khi tải danh sách tài khoản: ' + err.message);
+    } finally {
+      setFetchingProfiles(false);
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: 'admin' | 'user') => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (error) {
+        setErrorMsg('Lỗi cập nhật vai trò: ' + error.message);
+      } else {
+        setSuccessMsg('Cập nhật vai trò thành công!');
+        setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p));
+      }
+    } catch (err: any) {
+      setErrorMsg('Lỗi kết nối: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProfile = async (userId: string, name: string) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi hệ thống không?`)) {
+      setLoading(true);
+      setErrorMsg('');
+      setSuccessMsg('');
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        if (error) {
+          setErrorMsg('Lỗi khi xóa tài khoản: ' + error.message);
+        } else {
+          setSuccessMsg(`Đã xóa tài khoản "${name}" thành công!`);
+          setProfiles(prev => prev.filter(p => p.id !== userId));
+        }
+      } catch (err: any) {
+        setErrorMsg('Lỗi kết nối khi xóa: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
-      fetchAllOrders();
+      if (activeTab === 'orders') {
+        fetchAllOrders();
+      } else if (activeTab === 'accounts') {
+        fetchProfiles();
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, activeTab]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -151,6 +232,20 @@ export const AdminDashboard: React.FC = () => {
     setImagePreview('');
   };
 
+  const handleSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setSubImageFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setSubImagePreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const handleClearSubImage = (index: number) => {
+    setSubImageFiles(prev => prev.filter((_, i) => i !== index));
+    setSubImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Specs helper functions
   const addSpecRow = () => {
     setSpecs([...specs, { key: '', value: '' }]);
@@ -194,6 +289,11 @@ export const AdminDashboard: React.FC = () => {
     setEditImageFile(null);
     setEditImagePreview(prod.image);
     
+    // Set gallery / sub-images states
+    setExistingImages(prod.images || (prod.image ? [prod.image] : []));
+    setEditSubImageFiles([]);
+    setEditSubImagePreviews([]);
+    
     const specsArr = Object.entries(prod.specs || {}).map(([key, value]) => ({
       key,
       value: value as string
@@ -213,6 +313,24 @@ export const AdminDashboard: React.FC = () => {
   const handleClearEditImage = () => {
     setEditImageFile(null);
     setEditImagePreview('');
+  };
+
+  const handleEditSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setEditSubImageFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setEditSubImagePreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const handleClearEditSubImage = (index: number) => {
+    setEditSubImageFiles(prev => prev.filter((_, i) => i !== index));
+    setEditSubImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingImage = (url: string) => {
+    setExistingImages(prev => prev.filter(img => img !== url));
   };
 
   const addEditSpecRow = () => {
@@ -285,12 +403,13 @@ export const AdminDashboard: React.FC = () => {
       features: filteredFeatures,
       stock: stockNum,
       isFeatured: editIsFeatured,
-      isNsfw: editIsNsfw
+      isNsfw: editIsNsfw,
+      existingImages: existingImages
     };
 
     try {
       if (!editingProduct) return;
-      const result = await updateProduct(editingProduct.id, productPayload, editImageFile || undefined);
+      const result = await updateProduct(editingProduct.id, productPayload, editImageFile || undefined, editSubImageFiles);
       if (result.success) {
         setSuccessMsg(`Đã cập nhật sản phẩm "${editName}" thành công!`);
         setEditingProduct(null);
@@ -352,7 +471,7 @@ export const AdminDashboard: React.FC = () => {
     };
 
     try {
-      const result = await addProduct(productPayload, imageFile || undefined);
+      const result = await addProduct(productPayload, imageFile || undefined, subImageFiles);
       if (result.success) {
         setSuccessMsg(`Đã đăng tải sản phẩm "${prodName}" thành công!`);
         // Reset Form
@@ -363,6 +482,8 @@ export const AdminDashboard: React.FC = () => {
         setProdIsFeatured(false);
         setProdIsNsfw(false);
         handleClearImage();
+        setSubImageFiles([]);
+        setSubImagePreviews([]);
         setSpecs([{ key: 'Hãng sản xuất', value: 'YellowOrder' }]);
         setFeatures(['']);
       } else {
@@ -502,6 +623,30 @@ export const AdminDashboard: React.FC = () => {
             }}
           >
             <Plus size={16} /> Đăng sản phẩm mới
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('accounts');
+              setSuccessMsg('');
+              setErrorMsg('');
+              fetchProfiles();
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'accounts' ? 700 : 500,
+              backgroundColor: activeTab === 'accounts' ? 'var(--primary-glow)' : 'transparent',
+              color: activeTab === 'accounts' ? 'var(--primary)' : 'var(--text-secondary)',
+              textAlign: 'left',
+              width: '100%'
+            }}
+          >
+            <Users size={16} /> Quản lý Tài khoản
           </button>
         </aside>
 
@@ -815,71 +960,147 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Image File Selector */}
-                <div>
-                  <label className="label">Hình ảnh sản phẩm *</label>
-                  <div style={{
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '24px',
-                    textAlign: 'center',
-                    backgroundColor: 'var(--bg-input)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    position: 'relative'
-                  }}>
-                    {imagePreview ? (
-                      <div style={{ position: 'relative', width: '140px', height: '140px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                        <img src={imagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <button 
-                          type="button"
-                          onClick={handleClearImage}
-                          style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            backgroundColor: 'rgba(0,0,0,0.6)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '24px',
-                            height: '24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0
-                          }}
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload size={32} style={{ color: 'var(--text-muted)' }} />
-                        <div>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Click để chọn ảnh hoặc kéo thả ảnh vào đây</span>
-                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Hỗ trợ JPG, PNG, WEBP (Khuyên dùng tỷ lệ 5:4 hoặc 1:1)</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  <div>
+                    <label className="label">Hình ảnh sản phẩm chính *</label>
+                    <div style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '24px',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--bg-input)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px',
+                      position: 'relative',
+                      height: '140px',
+                      justifyContent: 'center'
+                    }}>
+                      {imagePreview ? (
+                        <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                          <img src={imagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button"
+                            onClick={handleClearImage}
+                            style={{
+                              position: 'absolute',
+                              top: '2px',
+                              right: '2px',
+                              backgroundColor: 'rgba(0,0,0,0.6)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '20px',
+                              height: '20px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            opacity: 0,
-                            cursor: 'pointer'
-                          }}
-                        />
-                      </>
-                    )}
+                      ) : (
+                        <>
+                          <Upload size={24} style={{ color: 'var(--text-muted)' }} />
+                          <div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Chọn ảnh chính</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              opacity: 0,
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Hình ảnh phụ (Có thể chọn nhiều)</label>
+                    <div style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '24px',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--bg-input)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px',
+                      position: 'relative',
+                      height: '140px',
+                      justifyContent: 'center'
+                    }}>
+                      <Upload size={24} style={{ color: 'var(--text-muted)' }} />
+                      <div>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Chọn nhiều ảnh phụ</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        multiple
+                        accept="image/*"
+                        onChange={handleSubImagesChange}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          opacity: 0,
+                          cursor: 'pointer'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {subImagePreviews.length > 0 && (
+                  <div>
+                    <label className="label">Danh sách ảnh phụ chuẩn bị tải lên ({subImagePreviews.length})</label>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      {subImagePreviews.map((preview, index) => (
+                        <div key={index} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                          <img src={preview} alt={`Sub Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button"
+                            onClick={() => handleClearSubImage(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '2px',
+                              right: '2px',
+                              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '18px',
+                              height: '18px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Specs Builder */}
                 <div>
@@ -980,6 +1201,123 @@ export const AdminDashboard: React.FC = () => {
                 </button>
 
               </form>
+            </div>
+          )}
+
+          {/* TAB 4: ACCOUNT MANAGEMENT */}
+          {activeTab === 'accounts' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Quản lý Tài khoản ({profiles.length})</h3>
+                <button 
+                  onClick={fetchProfiles} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
+                  title="Làm mới tài khoản"
+                >
+                  <RefreshCcw size={12} /> Làm mới
+                </button>
+              </div>
+
+              {fetchingProfiles ? (
+                <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                  <span className="loading-spinner" style={{ width: '32px', height: '32px' }}></span>
+                  <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải danh sách tài khoản...</p>
+                </div>
+              ) : profiles.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+                  <Users size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p style={{ fontSize: '0.95rem' }}>Chưa có tài khoản nào trong hệ thống.</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'var(--bg-input)', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>TÀI KHOẢN</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>EMAIL</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>VAI TRÒ</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>CẬP NHẬT CUỐI</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right' }}>THAO TÁC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profiles.map(profile => (
+                        <tr key={profile.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition-fast)' }}>
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                backgroundColor: profile.role === 'admin' ? 'var(--primary)' : 'var(--bg-input)',
+                                color: profile.role === 'admin' ? 'var(--text-on-primary)' : 'var(--text-primary)',
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid var(--border-color)'
+                              }}>
+                                {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                              <span style={{ fontWeight: 600 }}>{profile.name || 'Khách hàng'}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{profile.email || 'N/A'}</td>
+                          <td style={{ padding: '14px 16px' }}>
+                            <span className={`badge ${profile.role === 'admin' ? 'badge-yellow' : ''}`} style={{ 
+                              fontSize: '0.7rem',
+                              backgroundColor: profile.role === 'admin' ? 'var(--primary-glow)' : 'var(--bg-input)',
+                              color: profile.role === 'admin' ? 'var(--primary)' : 'var(--text-secondary)'
+                            }}>
+                              {profile.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                            {profile.updated_at ? new Date(profile.updated_at).toLocaleDateString('vi-VN', {
+                              year: 'numeric',
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'Chưa cập nhật'}
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
+                            <select
+                              value={profile.role}
+                              onChange={(e) => handleUpdateRole(profile.id, e.target.value as any)}
+                              className="input-field"
+                              style={{ width: '130px', height: '32px', padding: '0 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                              disabled={currentUser?.id === profile.id}
+                            >
+                              <option value="user">Khách hàng</option>
+                              <option value="admin">Quản trị viên</option>
+                            </select>
+                            <button
+                              onClick={() => handleDeleteProfile(profile.id, profile.name)}
+                              disabled={currentUser?.id === profile.id}
+                              style={{
+                                padding: '6px',
+                                color: '#ef4444',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                transition: 'background var(--transition-fast)'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              title="Xóa tài khoản"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -1130,70 +1468,188 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Image Selection */}
-              <div>
-                <label className="label">Hình ảnh sản phẩm (Để trống nếu giữ nguyên)</label>
-                <div style={{
-                  border: '2px dashed var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '16px',
-                  textAlign: 'center',
-                  backgroundColor: 'var(--bg-input)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px',
-                  position: 'relative'
-                }}>
-                  {editImagePreview ? (
-                    <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <img src={editImagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button 
-                        type="button"
-                        onClick={handleClearEditImage}
-                        style={{
-                          position: 'absolute',
-                          top: '4px',
-                          right: '4px',
-                          backgroundColor: 'rgba(0,0,0,0.6)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '20px',
-                          height: '20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          padding: 0
-                        }}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload size={24} style={{ color: 'var(--text-muted)' }} />
-                      <div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Chọn ảnh mới để thay đổi</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                <div>
+                  <label className="label">Hình ảnh chính (Để trống nếu giữ nguyên)</label>
+                  <div style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-input)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    position: 'relative',
+                    height: '110px',
+                    justifyContent: 'center'
+                  }}>
+                    {editImagePreview ? (
+                      <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                        <img src={editImagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button 
+                          type="button"
+                          onClick={handleClearEditImage}
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            right: '2px',
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '18px',
+                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          <X size={10} />
+                        </button>
                       </div>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleEditImageChange}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          opacity: 0,
-                          cursor: 'pointer'
-                        }}
-                      />
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <Upload size={20} style={{ color: 'var(--text-muted)' }} />
+                        <div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Chọn ảnh chính mới</span>
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={handleEditImageChange}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0,
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label">Tải lên thêm ảnh phụ mới</label>
+                  <div style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-input)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    position: 'relative',
+                    height: '110px',
+                    justifyContent: 'center'
+                  }}>
+                    <Upload size={20} style={{ color: 'var(--text-muted)' }} />
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Chọn các ảnh phụ mới</span>
+                    </div>
+                    <input 
+                      type="file" 
+                      multiple
+                      accept="image/*"
+                      onChange={handleEditSubImagesChange}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Display existing images & new previews */}
+              {(existingImages.length > 0 || editSubImagePreviews.length > 0) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  {existingImages.length > 0 && (
+                    <div>
+                      <label className="label">Ảnh phụ hiện tại ({existingImages.length})</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        {existingImages.map((imgUrl, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '55px', height: '55px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                            <img src={imgUrl} alt={`Existing ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveExistingImage(imgUrl)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                              title="Xóa ảnh này"
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {editSubImagePreviews.length > 0 && (
+                    <div>
+                      <label className="label">Ảnh phụ mới chuẩn bị tải lên ({editSubImagePreviews.length})</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        {editSubImagePreviews.map((preview, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '55px', height: '55px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                            <img src={preview} alt={`New Preview ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button 
+                              type="button"
+                              onClick={() => handleClearEditSubImage(idx)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Specs Editor */}
               <div>
