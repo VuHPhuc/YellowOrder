@@ -9,7 +9,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, setSelectedProduct, setActiveView } = useStore();
+  const { addToCart, setSelectedProduct, setActiveView, blurNsfw } = useStore();
   const [revealNsfw, setRevealNsfw] = useState(false);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -18,7 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   useEffect(() => {
     let interval: any;
-    const showCarousel = isHovered && gallery.length > 1 && !(product.isNsfw && !revealNsfw);
+    const showCarousel = isHovered && gallery.length > 1 && !(product.isNsfw && blurNsfw && !revealNsfw);
     
     if (showCarousel) {
       // Instantly switch to index 1 (first sub-image)
@@ -36,7 +36,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isHovered, gallery.length, product.isNsfw, revealNsfw]);
+  }, [isHovered, gallery.length, product.isNsfw, revealNsfw, blurNsfw]);
 
   const handleViewDetails = () => {
     setSelectedProduct(product);
@@ -49,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     addToCart(product, 1);
   };
 
-  const shouldZoom = gallery.length <= 1 && isHovered && !(product.isNsfw && !revealNsfw);
+  const shouldZoom = gallery.length <= 1 && isHovered && !(product.isNsfw && blurNsfw && !revealNsfw);
 
   return (
     <div className="card animate-fade-in" style={{
@@ -87,7 +87,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             height: '100%',
             objectFit: 'cover',
             transition: 'transform var(--transition-slow), filter var(--transition-fast)',
-            filter: product.isNsfw && !revealNsfw ? 'blur(20px)' : 'none',
+            filter: product.isNsfw && blurNsfw && !revealNsfw ? 'blur(20px)' : 'none',
             transform: shouldZoom ? 'scale(1.08)' : 'scale(1)'
           }}
         />
@@ -124,7 +124,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </span>
         )}
 
-        {product.isNsfw && !revealNsfw && (
+        {product.isNsfw && blurNsfw && !revealNsfw && (
           <div 
             onClick={(e) => {
               e.stopPropagation();

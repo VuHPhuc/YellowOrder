@@ -64,6 +64,8 @@ interface StoreContextType {
   // NSFW Filter states
   showNsfw: boolean;
   setShowNsfw: (show: boolean) => void;
+  blurNsfw: boolean;
+  setBlurNsfw: (blur: boolean) => void;
 
   currentUser: User | null;
   login: (email: string, password: string) => Promise<{ error: any }>;
@@ -228,7 +230,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
   const [sortBy, setSortBy] = useState('featured');
-  const [showNsfw, setShowNsfw] = useState(false);
+  const [showNsfw, setShowNsfw] = useState<boolean>(() => {
+    return localStorage.getItem('yelloworder_show_nsfw') === 'true';
+  });
+  const [blurNsfw, setBlurNsfw] = useState<boolean>(() => {
+    return localStorage.getItem('yelloworder_blur_nsfw') !== 'false';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('yelloworder_show_nsfw', String(showNsfw));
+  }, [showNsfw]);
+
+  useEffect(() => {
+    localStorage.setItem('yelloworder_blur_nsfw', String(blurNsfw));
+  }, [blurNsfw]);
   
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -953,6 +968,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       showNsfw,
       setShowNsfw,
+      blurNsfw,
+      setBlurNsfw,
 
       currentUser,
       login,

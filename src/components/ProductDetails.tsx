@@ -4,7 +4,7 @@ import { Star, ShoppingCart, ArrowLeft, Check, ShieldCheck, Heart } from 'lucide
 import { formatPrice } from '../utils/currency';
 
 export const ProductDetails: React.FC = () => {
-  const { selectedProduct, setSelectedProduct, addToCart, setActiveView } = useStore();
+  const { selectedProduct, setSelectedProduct, addToCart, setActiveView, blurNsfw } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
   const [revealNsfw, setRevealNsfw] = useState(false);
@@ -90,11 +90,11 @@ export const ProductDetails: React.FC = () => {
                 height: '100%', 
                 display: 'block', 
                 objectFit: 'cover',
-                filter: selectedProduct.isNsfw && !revealNsfw ? 'blur(25px)' : 'none',
+                filter: selectedProduct.isNsfw && blurNsfw && !revealNsfw ? 'blur(25px)' : 'none',
                 transition: 'filter var(--transition-fast)'
               }}
             />
-            {selectedProduct.isNsfw && !revealNsfw && (
+            {selectedProduct.isNsfw && blurNsfw && !revealNsfw && (
               <div 
                 onClick={() => setRevealNsfw(true)}
                 style={{

@@ -14,9 +14,7 @@ export const ProductGrid: React.FC = () => {
     priceRange,
     setPriceRange,
     sortBy,
-    setSortBy,
-    showNsfw,
-    setShowNsfw
+    setSortBy
   } = useStore();
 
   const categories = ['All', 'Figure', 'Food', 'Books', 'Goods', 'Cosmetics'];
@@ -30,7 +28,6 @@ export const ProductGrid: React.FC = () => {
     setSelectedCategory('All');
     setPriceRange([0, 10000000]);
     setSortBy('featured');
-    setShowNsfw(false);
   };
 
   return (
@@ -148,21 +145,7 @@ export const ProductGrid: React.FC = () => {
             </div>
           </div>
 
-          {/* Options / Sensitive Filters */}
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Tùy chọn khác
-            </h4>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-              <input
-                type="checkbox"
-                checked={showNsfw}
-                onChange={(e) => setShowNsfw(e.target.checked)}
-                style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
-              />
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Hiển thị sản phẩm NSFW</span>
-            </label>
-          </div>
+
 
         </aside>
 
