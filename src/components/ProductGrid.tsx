@@ -18,7 +18,7 @@ export const ProductGrid: React.FC = () => {
     setShowNsfw
   } = useStore();
 
-  const categories = ['All', 'Audio', 'Keyboards', 'Wearables', 'Monitors', 'Lifestyle', 'Travel'];
+  const categories = ['All', 'Figure', 'Food', 'Books', 'Goods', 'Cosmetics'];
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPriceRange([0, parseFloat(e.target.value)]);
@@ -105,7 +105,12 @@ export const ProductGrid: React.FC = () => {
                     width: '100%'
                   }}
                 >
-                  {cat === 'All' ? 'Tất cả' : cat}
+                  {cat === 'All' ? 'Tất cả' : 
+                   cat === 'Figure' ? 'Figure / Mô hình' :
+                   cat === 'Food' ? 'Đồ ăn / Bánh kẹo' :
+                   cat === 'Books' ? 'Sách / Manga' :
+                   cat === 'Goods' ? 'Đồ dùng Nhật Bản' :
+                   cat === 'Cosmetics' ? 'Mỹ phẩm / Làm đẹp' : cat}
                 </button>
               ))}
             </div>

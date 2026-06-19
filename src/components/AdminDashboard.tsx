@@ -38,7 +38,7 @@ export const AdminDashboard: React.FC = () => {
   const [prodName, setProdName] = useState('');
   const [prodPrice, setProdPrice] = useState('');
   const [prodStock, setProdStock] = useState('10');
-  const [prodCategory, setProdCategory] = useState('Audio');
+  const [prodCategory, setProdCategory] = useState('Figure');
   const [prodDescription, setProdDescription] = useState('');
   const [prodIsFeatured, setProdIsFeatured] = useState(false);
   const [prodIsNsfw, setProdIsNsfw] = useState(false);
@@ -60,7 +60,7 @@ export const AdminDashboard: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editStock, setEditStock] = useState('');
-  const [editCategory, setEditCategory] = useState('Audio');
+  const [editCategory, setEditCategory] = useState('Figure');
   const [editDescription, setEditDescription] = useState('');
   const [editIsFeatured, setEditIsFeatured] = useState(false);
   const [editIsNsfw, setEditIsNsfw] = useState(false);
@@ -751,12 +751,11 @@ export const AdminDashboard: React.FC = () => {
                       onChange={(e) => setProdCategory(e.target.value)}
                       className="input-field"
                     >
-                      <option value="Audio">Audio</option>
-                      <option value="Keyboards">Keyboards</option>
-                      <option value="Wearables">Wearables</option>
-                      <option value="Monitors">Monitors</option>
-                      <option value="Lifestyle">Lifestyle</option>
-                      <option value="Travel">Travel</option>
+                      <option value="Figure">Figure / Mô hình</option>
+                      <option value="Food">Đồ ăn / Bánh kẹo</option>
+                      <option value="Books">Sách / Manga</option>
+                      <option value="Goods">Đồ dùng Nhật Bản</option>
+                      <option value="Cosmetics">Mỹ phẩm / Làm đẹp</option>
                     </select>
                   </div>
 
@@ -1056,12 +1055,11 @@ export const AdminDashboard: React.FC = () => {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="input-field"
                   >
-                    <option value="Audio">Audio</option>
-                    <option value="Keyboards">Keyboards</option>
-                    <option value="Wearables">Wearables</option>
-                    <option value="Monitors">Monitors</option>
-                    <option value="Lifestyle">Lifestyle</option>
-                    <option value="Travel">Travel</option>
+                    <option value="Figure">Figure / Mô hình</option>
+                    <option value="Food">Đồ ăn / Bánh kẹo</option>
+                    <option value="Books">Sách / Manga</option>
+                    <option value="Goods">Đồ dùng Nhật Bản</option>
+                    <option value="Cosmetics">Mỹ phẩm / Làm đẹp</option>
                   </select>
                 </div>
 

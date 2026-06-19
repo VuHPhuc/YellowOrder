@@ -61,7 +61,7 @@ export const Hero: React.FC = () => {
           {/* Hero Content */}
           <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: 'var(--radius-full)', backgroundColor: 'rgba(234, 179, 8, 0.1)', color: 'var(--primary)', width: 'fit-content', border: '1px solid rgba(234, 179, 8, 0.2)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              <Sparkles size={14} /> Bộ Sưu Tập Cao Cấp Mới
+              <Sparkles size={14} /> Hàng Nhật Nội Địa Cao Cấp
             </div>
             
             <h1 style={{ 
@@ -72,11 +72,11 @@ export const Hero: React.FC = () => {
               letterSpacing: '-1.5px',
               margin: 0
             }}>
-              Kỷ Nguyên <span style={{ color: 'var(--primary)', background: 'linear-gradient(90deg, #facc15, #ca8a04)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Trải Nghiệm</span> Mới
+              Thế Giới <span style={{ color: 'var(--primary)', background: 'linear-gradient(90deg, #facc15, #ca8a04)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Figure & Đồ Nhật</span> Bản
             </h1>
             
             <p style={{ fontSize: '1.1rem', color: '#94a3b8', maxWidth: '480px', margin: 0 }}>
-              Khám phá các sản phẩm công nghệ cao cấp và thiết bị phong cách sống được thiết kế tinh xảo để định hình không gian sống và nâng cao trải nghiệm của bạn.
+              Chuyên mô hình Figure chính hãng, bánh kẹo/đồ ăn vặt, sách truyện manga gốc và hàng tiêu dùng nội địa Nhật Bản uy tín chất lượng cao.
             </p>
             
             <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
@@ -103,8 +103,8 @@ export const Hero: React.FC = () => {
               border: '2px solid rgba(255,255,255,0.05)'
             }}>
               <img 
-                src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80" 
-                alt="YellowOrder Apex Pro Wireless"
+                src="https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80" 
+                alt="Japanese Figures Collection"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
               <div style={{
@@ -116,8 +116,8 @@ export const Hero: React.FC = () => {
                 padding: '20px',
                 textAlign: 'left'
               }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>Nổi bật tuần này</span>
-                <h3 style={{ fontSize: '1.1rem', color: '#ffffff', marginTop: '4px' }}>Apex Pro Wireless Headset</h3>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>Figure nổi bật</span>
+                <h3 style={{ fontSize: '1.1rem', color: '#ffffff', marginTop: '4px' }}>Mô hình Anime chính hãng</h3>
               </div>
             </div>
           </div>
@@ -157,8 +157,8 @@ export const Hero: React.FC = () => {
             <Shield size={24} />
           </div>
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Bảo hành 2 năm</h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Cam kết 100% chính hãng từ nhà sản xuất</p>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Cam kết chính hãng</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Đền gấp 10 lần nếu phát hiện hàng fake</p>
           </div>
         </div>
 
@@ -172,8 +172,8 @@ export const Hero: React.FC = () => {
             <RotateCcw size={24} />
           </div>
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Đổi trả trong 30 ngày</h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Thủ tục nhanh chóng, đơn giản, tiện lợi</p>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Đóng gói chống móp hộp</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Bọc xốp bubble dày dặn, an toàn tuyệt đối</p>
           </div>
         </div>
       </div>
