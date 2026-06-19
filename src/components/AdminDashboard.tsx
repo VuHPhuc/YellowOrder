@@ -45,6 +45,13 @@ export const AdminDashboard: React.FC = () => {
   // Order Details Modal State
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
+  // Custom delete confirmation state
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{
+    type: 'order' | 'product';
+    id: string;
+    name: string;
+  } | null>(null);
+
   // Add Product Form State
   const [prodName, setProdName] = useState('');
   const [prodPrice, setProdPrice] = useState('');
@@ -507,24 +514,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Delete product action
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${name}" không?`)) {
-      setLoading(true);
-      setErrorMsg('');
-      setSuccessMsg('');
-      try {
-        const result = await deleteProduct(id);
-        if (result.success) {
-          setSuccessMsg(`Đã xóa sản phẩm "${name}" thành công!`);
-        } else {
-          setErrorMsg(result.error || 'Lỗi khi xóa sản phẩm.');
-        }
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Lỗi kết nối khi xóa.');
-      } finally {
-        setLoading(false);
-      }
-    }
+  const handleDeleteProduct = (id: string, name: string) => {
+    setConfirmDeleteTarget({ type: 'product', id, name });
   };
 
   return (
@@ -2016,18 +2007,8 @@ export const AdminDashboard: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (window.confirm(`Bạn có chắc chắn muốn xóa đơn hàng "${viewingOrder.id}" khỏi hệ thống không? Hành động này không thể hoàn tác.`)) {
-                      setLoading(true);
-                      const res = await deleteOrder(viewingOrder.id);
-                      setLoading(false);
-                      if (res.success) {
-                        setViewingOrder(null);
-                        setSuccessMsg(`Đã xóa đơn hàng ${viewingOrder.id} thành công!`);
-                      } else {
-                        setErrorMsg(`Lỗi khi xóa đơn hàng: ${res.error}`);
-                      }
-                    }
+                  onClick={() => {
+                    setConfirmDeleteTarget({ type: 'order', id: viewingOrder.id, name: viewingOrder.id });
                   }}
                   className="btn"
                   style={{
@@ -2059,6 +2040,121 @@ export const AdminDashboard: React.FC = () => {
                   Đóng
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Delete Modal */}
+      {confirmDeleteTarget && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(8px)',
+          animation: 'animate-fade-in 0.2s ease'
+        }}>
+          <div className="card" style={{
+            maxWidth: '450px',
+            width: '95%',
+            padding: '28px',
+            textAlign: 'center',
+            border: '1.5px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(239,68,68,0.1)',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto'
+            }}>
+              <AlertTriangle size={28} />
+            </div>
+            
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>
+              {confirmDeleteTarget.type === 'order' ? 'Xác nhận xóa đơn hàng' : 'Xác nhận xóa sản phẩm'}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '24px' }}>
+              {confirmDeleteTarget.type === 'order' ? (
+                <>
+                  Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng <strong style={{ color: 'var(--primary)' }}>{confirmDeleteTarget.id}</strong> khỏi hệ thống? 
+                  Hành động này **không thể hoàn tác** và sẽ xóa tất cả chi tiết sản phẩm liên quan.
+                </>
+              ) : (
+                <>
+                  Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm <strong style={{ color: 'var(--primary)' }}>"{confirmDeleteTarget.name}"</strong> khỏi hệ thống? 
+                  Hành động này **không thể hoàn tác**.
+                </>
+              )}
+            </p>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteTarget(null)}
+                className="btn btn-outline"
+                style={{ height: '40px', padding: '0 20px', fontWeight: 700 }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const target = confirmDeleteTarget;
+                  setConfirmDeleteTarget(null);
+                  setLoading(true);
+                  if (target.type === 'order') {
+                    const res = await deleteOrder(target.id);
+                    setLoading(false);
+                    if (res.success) {
+                      setViewingOrder(null);
+                      setSuccessMsg(`Đã xóa đơn hàng ${target.id} thành công!`);
+                    } else {
+                      setErrorMsg(`Lỗi khi xóa đơn hàng: ${res.error}`);
+                    }
+                  } else {
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                    try {
+                      const res = await deleteProduct(target.id);
+                      if (res.success) {
+                        setSuccessMsg(`Đã xóa sản phẩm "${target.name}" thành công!`);
+                      } else {
+                        setErrorMsg(res.error || 'Lỗi khi xóa sản phẩm.');
+                      }
+                    } catch (err: any) {
+                      setErrorMsg(err.message || 'Lỗi kết nối khi xóa.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+                className="btn"
+                style={{
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Đồng ý xóa
+              </button>
             </div>
           </div>
         </div>

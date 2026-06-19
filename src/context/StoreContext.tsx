@@ -126,88 +126,7 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-// Local mock products database as fallback
-const FALLBACK_PRODUCTS: Product[] = [
-  {
-    id: 'prod-1',
-    name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
-    price: 4000000,
-    rating: 4.9,
-    reviewsCount: 42,
-    category: 'Figure',
-    description: 'Mô hình figure cao cấp Altria Pendragon tỷ lệ 1/7 chính hãng Aniplex Nhật Bản. Thiết kế tinh xảo, áo choàng vải thật và các chi tiết giáp kim loại óng ánh cực kỳ sắc nét.',
-    image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tỷ lệ': '1/7 Scale',
-      'Chiều cao': 'Khoảng 25cm',
-      'Chất liệu': 'PVC & ABS chất lượng cao',
-      'Hãng sản xuất': 'Aniplex'
-    },
-    features: ['Chi tiết giáp kiếm đi kèm sắc sảo', 'Hộp ngoài thiết kế sang trọng giữ hộp đẹp', 'Sơn tĩnh điện chống phai màu sơn'],
-    stock: 5,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-2',
-    name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
-    price: 210000,
-    rating: 4.8,
-    reviewsCount: 154,
-    category: 'Food',
-    description: 'Hộp bánh xốp KitKat vị trà xanh Matcha thượng hạng sản xuất tại Uji, Kyoto. Vị đắng nhẹ thanh mát hòa quyện cùng lớp kem sô cô la trắng ngọt ngào béo ngậy.',
-    image: 'https://images.unsplash.com/photo-1582170088993-9c17cc919b4b?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Khối lượng': '150g',
-      'Quy cách': 'Hộp 12 gói nhỏ',
-      'Xuất xứ': 'Uji, Kyoto, Nhật Bản',
-      'Hạn sử dụng': '12 tháng kể từ ngày sản xuất'
-    },
-    features: ['Hương vị Matcha tự nhiên nguyên bản', 'Không chứa chất bảo quản hóa học', 'Sản xuất trực tiếp tại nhà máy nội địa Nhật'],
-    stock: 35,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-3',
-    name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
-    price: 300000,
-    rating: 5.0,
-    reviewsCount: 89,
-    category: 'Books',
-    description: 'Tập truyện tranh One Piece tập 100 phiên bản tiếng Nhật nguyên bản xuất bản bởi Shueisha. Ấn phẩm đặc biệt dành cho các fan cứng sưu tầm kỉ niệm dấu mốc lịch sử.',
-    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tác giả': 'Eiichiro Oda',
-      'Nhà xuất bản': 'Shueisha',
-      'Ngôn ngữ': 'Tiếng Nhật',
-      'Năm xuất bản': '2021'
-    },
-    features: ['Bìa rời (Obi) đặc trưng nguyên bản Nhật', 'In ấn sắc nét chất lượng giấy cao cấp', 'Kèm bookmark phiên bản giới hạn'],
-    stock: 15,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-4',
-    name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
-    price: 4500000,
-    rating: 4.9,
-    reviewsCount: 28,
-    category: 'Figure',
-    description: 'Mô hình Sora Kasugano tỷ lệ 1/6 trong trang phục thỏ đen gợi cảm từ hãng FREEing. Phiên bản giới hạn chi tiết và nhạy cảm dành riêng cho nhà sưu tập trên 18 tuổi.',
-    image: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tỷ lệ': '1/6 Scale',
-      'Chiều cao': 'Khoảng 30cm',
-      'Độ tuổi áp dụng': '18+ (NSFW)',
-      'Hãng sản xuất': 'FREEing'
-    },
-    features: ['Trang phục thỏ bằng vải lưới thật co giãn', 'Đầy đủ phụ kiện đi kèm', 'Thiết kế nhạy cảm cao cấp chuẩn hàng sưu tầm'],
-    stock: 3,
-    isNsfw: true
-  }
-];
+const FALLBACK_PRODUCTS: Product[] = [];
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -491,24 +410,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteOrder = async (orderId: string) => {
     try {
-      const { error: itemsError } = await supabase
+      // Delete order items first
+      const { data: deletedItems, error: itemsError } = await supabase
         .from('order_items')
         .delete()
-        .eq('order_id', orderId);
+        .eq('order_id', orderId)
+        .select();
 
       if (itemsError) {
         console.error('Lỗi khi xóa chi tiết đơn hàng:', itemsError.message);
         return { success: false, error: itemsError.message };
       }
 
-      const { error: orderError } = await supabase
+      // Delete order
+      const { data: deletedOrders, error: orderError } = await supabase
         .from('orders')
         .delete()
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select();
 
       if (orderError) {
         console.error('Lỗi khi xóa đơn hàng:', orderError.message);
         return { success: false, error: orderError.message };
+      }
+
+      // If data is empty, it means RLS blocked the deletion
+      if (!deletedOrders || deletedOrders.length === 0) {
+        console.warn('Xóa đơn hàng thất bại: 0 hàng bị ảnh hưởng. Hãy kiểm tra lại cấu hình chính sách Row-Level Security (RLS) của bảng orders trên Supabase.');
+        return { 
+          success: false, 
+          error: 'Chính sách Row-Level Security (RLS) trên Supabase đang chặn quyền xóa đơn hàng của tài khoản này.' 
+        };
       }
 
       setAllOrders(prev => prev.filter(o => o.id !== orderId));
