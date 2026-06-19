@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -12,27 +12,10 @@ import { AccountPage } from './components/AccountPage';
 import { Footer } from './components/Footer';
 import { ProductCard } from './components/ProductCard';
 import { ArrowRight, Flame } from 'lucide-react';
-import { supabase } from './utils/supabase';
 import './App.css';
 
 const MainAppContent: React.FC = () => {
   const { activeView, setActiveView, products } = useStore();
-
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('⚡ [YellowOrder] Supabase connection failed:', error.message);
-        } else {
-          console.log('⚡ [YellowOrder] Supabase connected successfully!', data);
-        }
-      } catch (err) {
-        console.error('⚡ [YellowOrder] Supabase connection error:', err);
-      }
-    };
-    testConnection();
-  }, []);
 
   // Filter featured products for the home page
   const featuredProducts = products.filter(p => p.isFeatured);
