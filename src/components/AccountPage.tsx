@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Mail, Calendar, ShieldAlert, ShoppingBag, Eye, Lock, Settings } from 'lucide-react';
+import { Mail, Calendar, ShieldAlert, ShoppingBag, Eye, Settings } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { supabase } from '../utils/supabase';
 
