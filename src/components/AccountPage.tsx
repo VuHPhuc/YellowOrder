@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Mail, Calendar, ShieldAlert, ShoppingBag, Eye, Settings } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { supabase } from '../utils/supabase';
 
 export const AccountPage: React.FC = () => {
-  const { currentUser, lastOrder, setActiveView, showNsfw, setShowNsfw, blurNsfw, setBlurNsfw } = useStore();
+  const { 
+    currentUser, 
+    setLastOrder, 
+    userOrders, 
+    userOrdersLoading, 
+    fetchUserOrders, 
+    setActiveView, 
+    showNsfw, 
+    setShowNsfw, 
+    blurNsfw, 
+    setBlurNsfw 
+  } = useStore();
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
 
   // Profile details settings
@@ -34,7 +45,13 @@ export const AccountPage: React.FC = () => {
     );
   }
 
-  const handleViewOrder = () => {
+  useEffect(() => {
+    fetchUserOrders();
+  }, []);
+
+  const handleViewOrder = (order: any) => {
+    setLastOrder(order);
+    localStorage.setItem('yelloworder_last_order', JSON.stringify(order));
     setActiveView('success');
   };
 
@@ -194,7 +211,19 @@ export const AccountPage: React.FC = () => {
           {/* Active Tab View */}
           {activeTab === 'orders' ? (
             /* Order History Tab */
-            lastOrder ? (
+            userOrdersLoading ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '60px 0',
+                gap: '12px'
+              }}>
+                <span className="loading-spinner" style={{ width: '32px', height: '32px' }}></span>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Đang tải danh sách đơn hàng...</p>
+              </div>
+            ) : userOrders.length > 0 ? (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -220,42 +249,45 @@ export const AccountPage: React.FC = () => {
                   <span style={{ textAlign: 'right' }}>HÀNH ĐỘNG</span>
                 </div>
 
-                {/* Order row */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '120px 1fr 140px 100px 100px',
-                  padding: '16px',
-                  alignItems: 'center',
-                  fontSize: '0.85rem',
-                  borderBottom: '1px solid var(--border-color)'
-                }}>
-                  <strong style={{ color: 'var(--primary)' }}>{lastOrder.id}</strong>
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '8px' }}>
-                    {lastOrder.items[0]?.product.name} {lastOrder.items.length > 1 ? `và ${lastOrder.items.length - 1} sản phẩm khác` : ''}
-                  </span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{lastOrder.date.split(',')[0]}</span>
-                  <strong>{formatPrice(lastOrder.total)}</strong>
-                  <div style={{ textAlign: 'right' }}>
-                    <button
-                      onClick={handleViewOrder}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 'var(--radius-sm)',
-                        backgroundColor: 'var(--bg-input)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        border: '1px solid var(--border-color)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Eye size={12} /> Xem chi tiết
-                    </button>
+                {/* Order rows */}
+                {userOrders.map((order) => (
+                  <div key={order.id} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '120px 1fr 140px 100px 100px',
+                    padding: '16px',
+                    alignItems: 'center',
+                    fontSize: '0.85rem',
+                    borderBottom: '1px solid var(--border-color)'
+                  }}>
+                    <strong style={{ color: 'var(--primary)' }}>{order.id}</strong>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '8px' }}>
+                      {order.items[0]?.product.name || 'Không rõ sản phẩm'} 
+                      {order.items.length > 1 ? ` và ${order.items.length - 1} sản phẩm khác` : ''}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{order.date.split(',')[0]}</span>
+                    <strong>{formatPrice(order.total)}</strong>
+                    <div style={{ textAlign: 'right' }}>
+                      <button
+                        onClick={() => handleViewOrder(order)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: 'var(--bg-input)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          border: '1px solid var(--border-color)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={12} /> Xem chi tiết
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             ) : (
               <div style={{

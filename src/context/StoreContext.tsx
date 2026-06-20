@@ -80,6 +80,10 @@ interface StoreContextType {
   
   placeOrder: (shippingDetails: any) => Promise<string>;
   lastOrder: Order | null;
+  setLastOrder: React.Dispatch<React.SetStateAction<Order | null>>;
+  userOrders: Order[];
+  userOrdersLoading: boolean;
+  fetchUserOrders: () => Promise<void>;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   
@@ -131,6 +135,8 @@ const FALLBACK_PRODUCTS: Product[] = [];
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('yelloworder_cart');
     return savedCart ? JSON.parse(savedCart) : [];
@@ -261,6 +267,166 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       subscription.unsubscribe();
     };
   }, []);
+
+  // Fetch user orders and synchronize lastOrder
+  const fetchUserOrders = async () => {
+    if (!currentUser?.id) {
+      setUserOrders([]);
+      return;
+    }
+    setUserOrdersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          user_id,
+          total,
+          status,
+          shipping_details,
+          created_at,
+          order_items (
+            id,
+            quantity,
+            price,
+            product_id,
+            products (
+              id,
+              name,
+              image_url,
+              category
+            )
+          )
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Lỗi tải danh sách đơn hàng người dùng:', error.message);
+        setUserOrdersLoading(false);
+        return;
+      }
+
+      if (data) {
+        const resolveOrderItemProduct = (item: any) => {
+          if (item.products) {
+            return {
+              id: item.products.id,
+              name: item.products.name,
+              image: item.products.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+              category: item.products.category
+            };
+          }
+          
+          const price = parseFloat(item.price);
+          if (price === 4000000) {
+            return {
+              id: 'prod-1',
+              name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
+              image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          if (price === 210000) {
+            return {
+              id: 'prod-2',
+              name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
+              image: 'https://images.unsplash.com/photo-1582170088993-9c17cc919b4b?w=800&auto=format&fit=crop&q=60',
+              category: 'Food'
+            };
+          }
+          if (price === 300000) {
+            return {
+              id: 'prod-3',
+              name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
+              image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=60',
+              category: 'Books'
+            };
+          }
+          if (price === 4500000) {
+            return {
+              id: 'prod-4',
+              name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
+              image: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          
+          return {
+            id: 'prod-unknown',
+            name: 'Sản phẩm Demo #' + (item.product_id || 'Unknown'),
+            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+            category: 'Demo'
+          };
+        };
+
+        const mappedOrders: Order[] = data.map((o: any) => ({
+          id: o.id,
+          user_id: o.user_id,
+          items: (o.order_items || []).map((item: any) => {
+            const resolved = resolveOrderItemProduct(item);
+            return {
+              product: {
+                id: resolved.id,
+                name: resolved.name,
+                price: parseFloat(item.price),
+                rating: 5.0,
+                reviewsCount: 0,
+                category: resolved.category,
+                description: '',
+                image: resolved.image,
+                specs: {},
+                features: []
+              },
+              quantity: item.quantity
+            };
+          }),
+          total: parseFloat(o.total),
+          shipping: o.shipping_details,
+          date: new Date(o.created_at).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: o.status
+        }));
+        
+        setUserOrders(mappedOrders);
+
+        // Sync lastOrder if it was deleted from DB
+        if (lastOrder) {
+          const exists = mappedOrders.some(o => o.id === lastOrder.id);
+          if (!exists) {
+            setLastOrder(null);
+            localStorage.removeItem('yelloworder_last_order');
+          } else {
+            // Also sync status if it changed
+            const currentDbOrder = mappedOrders.find(o => o.id === lastOrder.id);
+            if (currentDbOrder && currentDbOrder.status !== lastOrder.status) {
+              setLastOrder(currentDbOrder);
+              localStorage.setItem('yelloworder_last_order', JSON.stringify(currentDbOrder));
+            }
+          }
+        }
+      } else {
+        setUserOrders([]);
+        if (lastOrder) {
+          setLastOrder(null);
+          localStorage.removeItem('yelloworder_last_order');
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối khi tải đơn hàng người dùng:', err);
+    } finally {
+      setUserOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserOrders();
+  }, [currentUser]);
 
   // Fetch all orders for administrator dashboard view
   const fetchAllOrders = async () => {
@@ -840,6 +1006,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err) {
         console.error('Lỗi kết nối khi đặt hàng lên Supabase:', err);
       }
+      await fetchUserOrders();
     }
 
     clearCart();
@@ -913,6 +1080,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSelectedProduct,
       placeOrder,
       lastOrder,
+      setLastOrder,
+      userOrders,
+      userOrdersLoading,
+      fetchUserOrders,
       theme,
       toggleTheme,
       
