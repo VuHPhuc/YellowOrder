@@ -199,7 +199,7 @@ export const Footer: React.FC = () => {
             © {new Date().getFullYear()} YellowOrder. Bảo lưu mọi quyền.
           </p>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            Được phát triển với <Heart size={12} fill="#ef4444" color="#ef4444" /> bởi đội ngũ YellowOrder
+            Được thiết kế và phát triển với <Heart size={12} fill="#ef4444" color="#ef4444" /> bởi đội ngũ YellowOrder
           </p>
         </div>
 
