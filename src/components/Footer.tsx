@@ -60,7 +60,7 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              Trải nghiệm mua sắm thiết bị công nghệ và phong cách sống cao cấp với thiết kế hiện đại, chất lượng vượt trội.
+              Trải nghiệm mua sắm mô hình Figure, đồ ăn, sách truyện và hàng nội địa Nhật Bản chất lượng cao, chính hãng.
             </p>
             <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
               <a href="https://github.com/VuHPhuc/YellowOrder" target="_blank" rel="noreferrer" style={{
@@ -111,13 +111,29 @@ export const Footer: React.FC = () => {
               Danh mục
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Audio', 'Keyboards', 'Wearables', 'Monitors', 'Lifestyle', 'Travel'].map(cat => (
-                <li key={cat}>
+              {[
+                { id: 'Figure', label: 'Figure / Mô hình' },
+                { id: 'Food', label: 'Đồ ăn / Bánh kẹo' },
+                { id: 'Books', label: 'Sách / Manga' },
+                { id: 'Goods', label: 'Đồ dùng Nhật Bản' },
+                { id: 'Cosmetics', label: 'Mỹ phẩm / Làm đẹp' }
+              ].map(cat => (
+                <li key={cat.id}>
                   <button 
-                    onClick={() => handleCategoryClick(cat)}
-                    style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', padding: 0 }}
+                    onClick={() => handleCategoryClick(cat.id)}
+                    style={{ 
+                      fontSize: '0.9rem', 
+                      color: 'var(--text-secondary)', 
+                      padding: 0,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                   >
-                    Thiết bị {cat}
+                    {cat.label}
                   </button>
                 </li>
               ))}

@@ -41,7 +41,7 @@ const MainAppContent: React.FC = () => {
                     <Flame size={24} style={{ color: 'var(--primary)' }} /> Sản phẩm bán chạy
                   </h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-                    Những thiết bị được khách hàng ưa chuộng và đánh giá cao nhất tuần này.
+                    Những sản phẩm được khách hàng sưu tầm ưa chuộng và đánh giá cao nhất tuần này.
                   </p>
                 </div>
                 <button
@@ -79,7 +79,7 @@ const MainAppContent: React.FC = () => {
                   <span className="badge badge-yellow" style={{ marginBottom: '8px' }}>Ưu đãi giới hạn</span>
                   <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '8px' }}>Nhập mã <strong style={{ color: 'var(--primary)' }}>YELLOW10</strong> giảm ngay 10%</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '500px' }}>
-                    Áp dụng cho tất cả các đơn hàng đầu tiên mua thiết bị âm thanh và bàn phím cơ. Thời hạn khuyến mãi kéo dài đến hết tháng này.
+                    Áp dụng cho tất cả các đơn hàng đầu tiên mua Figure, sách truyện Manga và đồ dùng Nhật Bản. Thời hạn khuyến mãi kéo dài đến hết tháng này.
                   </p>
                 </div>
                 <button

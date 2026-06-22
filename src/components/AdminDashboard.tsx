@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import type { Product } from '../context/StoreContext';
+import type { Product, Order } from '../context/StoreContext';
+import { supabase } from '../utils/supabase';
+import { formatPrice, convertJpyToVnd, convertVndToJpy, formatWithDots } from '../utils/currency';
 import { 
   Package, 
   ListOrdered, 
@@ -13,7 +15,8 @@ import {
   AlertTriangle,
   RefreshCcw,
   Sparkles,
-  X
+  X,
+  Users
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -23,20 +26,36 @@ export const AdminDashboard: React.FC = () => {
     allOrders, 
     fetchAllOrders, 
     updateOrderStatus, 
+    deleteOrder,
     addProduct, 
     deleteProduct,
     updateProduct,
     setActiveView 
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'add-product'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'add-product' | 'accounts'>('orders');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // User/Account State
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [fetchingProfiles, setFetchingProfiles] = useState(false);
+
+  // Order Details Modal State
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+
+  // Custom delete confirmation state
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{
+    type: 'order' | 'product';
+    id: string;
+    name: string;
+  } | null>(null);
+
   // Add Product Form State
   const [prodName, setProdName] = useState('');
   const [prodPrice, setProdPrice] = useState('');
+  const [prodPriceJpy, setProdPriceJpy] = useState('');
   const [prodStock, setProdStock] = useState('10');
   const [prodCategory, setProdCategory] = useState('Figure');
   const [prodDescription, setProdDescription] = useState('');
@@ -46,6 +65,8 @@ export const AdminDashboard: React.FC = () => {
   // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [subImageFiles, setSubImageFiles] = useState<File[]>([]);
+  const [subImagePreviews, setSubImagePreviews] = useState<string[]>([]);
 
   // Specs Builder State
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([
@@ -59,6 +80,7 @@ export const AdminDashboard: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [editPriceJpy, setEditPriceJpy] = useState('');
   const [editStock, setEditStock] = useState('');
   const [editCategory, setEditCategory] = useState('Figure');
   const [editDescription, setEditDescription] = useState('');
@@ -68,12 +90,86 @@ export const AdminDashboard: React.FC = () => {
   const [editImagePreview, setEditImagePreview] = useState('');
   const [editSpecs, setEditSpecs] = useState<{ key: string; value: string }[]>([]);
   const [editFeatures, setEditFeatures] = useState<string[]>([]);
+  const [editSubImageFiles, setEditSubImageFiles] = useState<File[]>([]);
+  const [editSubImagePreviews, setEditSubImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+
+  // Fetch profiles for account management
+  const fetchProfiles = async () => {
+    setFetchingProfiles(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) {
+        setErrorMsg('Lỗi tải danh sách tài khoản: ' + error.message);
+      } else if (data) {
+        setProfiles(data);
+      }
+    } catch (err: any) {
+      setErrorMsg('Lỗi kết nối khi tải danh sách tài khoản: ' + err.message);
+    } finally {
+      setFetchingProfiles(false);
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: 'admin' | 'user') => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (error) {
+        setErrorMsg('Lỗi cập nhật vai trò: ' + error.message);
+      } else {
+        setSuccessMsg('Cập nhật vai trò thành công!');
+        setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p));
+      }
+    } catch (err: any) {
+      setErrorMsg('Lỗi kết nối: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProfile = async (userId: string, name: string) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi hệ thống không?`)) {
+      setLoading(true);
+      setErrorMsg('');
+      setSuccessMsg('');
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        if (error) {
+          setErrorMsg('Lỗi khi xóa tài khoản: ' + error.message);
+        } else {
+          setSuccessMsg(`Đã xóa tài khoản "${name}" thành công!`);
+          setProfiles(prev => prev.filter(p => p.id !== userId));
+        }
+      } catch (err: any) {
+        setErrorMsg('Lỗi kết nối khi xóa: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
-      fetchAllOrders();
+      if (activeTab === 'orders') {
+        fetchAllOrders();
+        fetchProfiles();
+      } else if (activeTab === 'accounts') {
+        fetchProfiles();
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, activeTab]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -151,6 +247,20 @@ export const AdminDashboard: React.FC = () => {
     setImagePreview('');
   };
 
+  const handleSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setSubImageFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setSubImagePreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const handleClearSubImage = (index: number) => {
+    setSubImageFiles(prev => prev.filter((_, i) => i !== index));
+    setSubImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Specs helper functions
   const addSpecRow = () => {
     setSpecs([...specs, { key: '', value: '' }]);
@@ -185,7 +295,8 @@ export const AdminDashboard: React.FC = () => {
   const handleStartEdit = (prod: Product) => {
     setEditingProduct(prod);
     setEditName(prod.name);
-    setEditPrice(prod.price.toString());
+    setEditPrice(formatWithDots(prod.price.toString()));
+    setEditPriceJpy(formatWithDots(convertVndToJpy(prod.price).toString()));
     setEditStock(prod.stock.toString());
     setEditCategory(prod.category);
     setEditDescription(prod.description || '');
@@ -193,6 +304,11 @@ export const AdminDashboard: React.FC = () => {
     setEditIsNsfw(!!prod.isNsfw);
     setEditImageFile(null);
     setEditImagePreview(prod.image);
+    
+    // Set gallery / sub-images states
+    setExistingImages(prod.images || (prod.image ? [prod.image] : []));
+    setEditSubImageFiles([]);
+    setEditSubImagePreviews([]);
     
     const specsArr = Object.entries(prod.specs || {}).map(([key, value]) => ({
       key,
@@ -213,6 +329,24 @@ export const AdminDashboard: React.FC = () => {
   const handleClearEditImage = () => {
     setEditImageFile(null);
     setEditImagePreview('');
+  };
+
+  const handleEditSubImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setEditSubImageFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setEditSubImagePreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const handleClearEditSubImage = (index: number) => {
+    setEditSubImageFiles(prev => prev.filter((_, i) => i !== index));
+    setEditSubImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingImage = (url: string) => {
+    setExistingImages(prev => prev.filter(img => img !== url));
   };
 
   const addEditSpecRow = () => {
@@ -253,7 +387,7 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const priceNum = parseFloat(editPrice);
+    const priceNum = parseInt(editPrice.replace(/\D/g, ''), 10);
     if (isNaN(priceNum) || priceNum <= 0) {
       setErrorMsg('Giá sản phẩm phải là một số lớn hơn 0.');
       return;
@@ -285,12 +419,13 @@ export const AdminDashboard: React.FC = () => {
       features: filteredFeatures,
       stock: stockNum,
       isFeatured: editIsFeatured,
-      isNsfw: editIsNsfw
+      isNsfw: editIsNsfw,
+      existingImages: existingImages
     };
 
     try {
       if (!editingProduct) return;
-      const result = await updateProduct(editingProduct.id, productPayload, editImageFile || undefined);
+      const result = await updateProduct(editingProduct.id, productPayload, editImageFile || undefined, editSubImageFiles);
       if (result.success) {
         setSuccessMsg(`Đã cập nhật sản phẩm "${editName}" thành công!`);
         setEditingProduct(null);
@@ -315,7 +450,7 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
-    const priceNum = parseFloat(prodPrice);
+    const priceNum = parseInt(prodPrice.replace(/\D/g, ''), 10);
     if (isNaN(priceNum) || priceNum <= 0) {
       setErrorMsg('Giá sản phẩm phải là một số lớn hơn 0.');
       return;
@@ -352,17 +487,20 @@ export const AdminDashboard: React.FC = () => {
     };
 
     try {
-      const result = await addProduct(productPayload, imageFile || undefined);
+      const result = await addProduct(productPayload, imageFile || undefined, subImageFiles);
       if (result.success) {
         setSuccessMsg(`Đã đăng tải sản phẩm "${prodName}" thành công!`);
         // Reset Form
         setProdName('');
         setProdPrice('');
+        setProdPriceJpy('');
         setProdStock('10');
         setProdDescription('');
         setProdIsFeatured(false);
         setProdIsNsfw(false);
         handleClearImage();
+        setSubImageFiles([]);
+        setSubImagePreviews([]);
         setSpecs([{ key: 'Hãng sản xuất', value: 'YellowOrder' }]);
         setFeatures(['']);
       } else {
@@ -376,24 +514,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Delete product action
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${name}" không?`)) {
-      setLoading(true);
-      setErrorMsg('');
-      setSuccessMsg('');
-      try {
-        const result = await deleteProduct(id);
-        if (result.success) {
-          setSuccessMsg(`Đã xóa sản phẩm "${name}" thành công!`);
-        } else {
-          setErrorMsg(result.error || 'Lỗi khi xóa sản phẩm.');
-        }
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Lỗi kết nối khi xóa.');
-      } finally {
-        setLoading(false);
-      }
-    }
+  const handleDeleteProduct = (id: string, name: string) => {
+    setConfirmDeleteTarget({ type: 'product', id, name });
   };
 
   return (
@@ -440,6 +562,7 @@ export const AdminDashboard: React.FC = () => {
               setSuccessMsg('');
               setErrorMsg('');
               fetchAllOrders();
+              fetchProfiles();
             }}
             style={{
               display: 'flex',
@@ -503,6 +626,30 @@ export const AdminDashboard: React.FC = () => {
           >
             <Plus size={16} /> Đăng sản phẩm mới
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('accounts');
+              setSuccessMsg('');
+              setErrorMsg('');
+              fetchProfiles();
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'accounts' ? 700 : 500,
+              backgroundColor: activeTab === 'accounts' ? 'var(--primary-glow)' : 'transparent',
+              color: activeTab === 'accounts' ? 'var(--primary)' : 'var(--text-secondary)',
+              textAlign: 'left',
+              width: '100%'
+            }}
+          >
+            <Users size={16} /> Quản lý Tài khoản
+          </button>
         </aside>
 
         {/* Workspace Display */}
@@ -549,7 +696,7 @@ export const AdminDashboard: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Quản lý Đơn hàng ({allOrders.length})</h3>
                 <button 
-                  onClick={fetchAllOrders} 
+                  onClick={() => { fetchAllOrders(); fetchProfiles(); }} 
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
                   title="Làm mới đơn hàng"
                 >
@@ -580,37 +727,34 @@ export const AdminDashboard: React.FC = () => {
                         <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition-fast)' }}>
                           <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--primary)' }}>{order.id}</td>
                           <td style={{ padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 600 }}>{order.shipping?.fullName || 'Khách hàng ẩn danh'}</div>
+                            <div style={{ fontWeight: 600 }}>
+                              {order.shipping?.name || order.shipping?.fullName || (profiles.find(p => p.id === order.user_id)?.name) || 'Khách hàng ẩn danh'}
+                            </div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{order.shipping?.phone || 'Không có SĐT'}</div>
                           </td>
                           <td style={{ padding: '14px 16px', fontWeight: 700 }}>
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.total)}
+                            {formatPrice(order.total)}
                           </td>
                           <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{order.date}</td>
                           <td style={{ padding: '14px 16px' }}>
-                            <span className={`badge ${
-                              order.status === 'delivered' ? 'badge-yellow' : 
-                              order.status === 'shipped' ? 'badge-yellow' : ''
-                            }`} style={{ 
+                            <span className={`badge`} style={{ 
                               fontSize: '0.7rem',
-                              backgroundColor: order.status === 'delivered' ? '#10b981' : order.status === 'shipped' ? '#3b82f6' : 'rgba(234,179,8,0.2)',
-                              color: order.status === 'delivered' || order.status === 'shipped' ? '#fff' : 'var(--primary)'
+                              backgroundColor: order.status === 'delivered' ? '#10b981' : order.status === 'shipped' ? '#3b82f6' : order.status === 'cancelled' ? '#ef4444' : 'rgba(234,179,8,0.2)',
+                              color: order.status === 'delivered' || order.status === 'shipped' || order.status === 'cancelled' ? '#fff' : 'var(--primary)'
                             }}>
                               {order.status === 'delivered' ? 'Đã giao' : 
-                               order.status === 'shipped' ? 'Đang giao' : 'Đang xử lý'}
+                               order.status === 'shipped' ? 'Đang giao' : 
+                               order.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
                             </span>
                           </td>
                           <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                            <select
-                              value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
-                              className="input-field"
-                              style={{ width: '120px', height: '32px', padding: '0 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                            <button
+                              onClick={() => setViewingOrder(order)}
+                              className="btn btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, height: '32px' }}
                             >
-                              <option value="processing">Đang xử lý</option>
-                              <option value="shipped">Đang giao</option>
-                              <option value="delivered">Đã giao</option>
-                            </select>
+                              Chi tiết
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -650,7 +794,7 @@ export const AdminDashboard: React.FC = () => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{prod.category}</span>
                           <span style={{ color: 'var(--border-hover)' }}>•</span>
                           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(prod.price)}
+                            {formatPrice(prod.price)}
                           </span>
                           <span style={{ color: 'var(--border-hover)' }}>•</span>
                           <span style={{ fontSize: '0.75rem', color: prod.stock > 0 ? 'var(--text-secondary)' : '#ef4444', fontWeight: 600 }}>
@@ -735,17 +879,50 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="label">Giá sản phẩm (USD) *</label>
+                    <label className="label">Giá sản phẩm (VND) *</label>
                     <input 
-                      type="number" 
-                      step="0.01"
-                      min="0.01"
+                      type="text" 
                       value={prodPrice}
-                      onChange={(e) => setProdPrice(e.target.value)}
+                      onChange={(e) => {
+                        const formatted = formatWithDots(e.target.value);
+                        setProdPrice(formatted);
+                        const rawVnd = parseInt(formatted.replace(/\D/g, ''), 10);
+                        if (!isNaN(rawVnd) && rawVnd > 0) {
+                          setProdPriceJpy(formatWithDots(convertVndToJpy(rawVnd).toString()));
+                        } else {
+                          setProdPriceJpy('');
+                        }
+                      }}
                       className="input-field" 
-                      placeholder="e.g. 49.99"
+                      placeholder="Ví dụ: 4.500.000"
                       required
                     />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                      Nhập đến đâu tự động thêm dấu "." và tính quy đổi sang Yên (JPY)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
+                    <input 
+                      type="text" 
+                      value={prodPriceJpy}
+                      onChange={(e) => {
+                        const formatted = formatWithDots(e.target.value);
+                        setProdPriceJpy(formatted);
+                        const rawJpy = parseInt(formatted.replace(/\D/g, ''), 10);
+                        if (!isNaN(rawJpy) && rawJpy > 0) {
+                          setProdPrice(formatWithDots(convertJpyToVnd(rawJpy).toString()));
+                        } else {
+                          setProdPrice('');
+                        }
+                      }}
+                      className="input-field" 
+                      placeholder="Ví dụ: 6.500"
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                      Nhập Yên sẽ tự động quy đổi sang VND (1 JPY = 160 VND)
+                    </span>
                   </div>
 
                   <div>
@@ -815,71 +992,147 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Image File Selector */}
-                <div>
-                  <label className="label">Hình ảnh sản phẩm *</label>
-                  <div style={{
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '24px',
-                    textAlign: 'center',
-                    backgroundColor: 'var(--bg-input)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    position: 'relative'
-                  }}>
-                    {imagePreview ? (
-                      <div style={{ position: 'relative', width: '140px', height: '140px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                        <img src={imagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <button 
-                          type="button"
-                          onClick={handleClearImage}
-                          style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            backgroundColor: 'rgba(0,0,0,0.6)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '24px',
-                            height: '24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0
-                          }}
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload size={32} style={{ color: 'var(--text-muted)' }} />
-                        <div>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Click để chọn ảnh hoặc kéo thả ảnh vào đây</span>
-                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Hỗ trợ JPG, PNG, WEBP (Khuyên dùng tỷ lệ 5:4 hoặc 1:1)</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  <div>
+                    <label className="label">Hình ảnh sản phẩm chính *</label>
+                    <div style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '24px',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--bg-input)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px',
+                      position: 'relative',
+                      height: '140px',
+                      justifyContent: 'center'
+                    }}>
+                      {imagePreview ? (
+                        <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                          <img src={imagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button"
+                            onClick={handleClearImage}
+                            style={{
+                              position: 'absolute',
+                              top: '2px',
+                              right: '2px',
+                              backgroundColor: 'rgba(0,0,0,0.6)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '20px',
+                              height: '20px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            opacity: 0,
-                            cursor: 'pointer'
-                          }}
-                        />
-                      </>
-                    )}
+                      ) : (
+                        <>
+                          <Upload size={24} style={{ color: 'var(--text-muted)' }} />
+                          <div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Chọn ảnh chính</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              opacity: 0,
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Hình ảnh phụ (Có thể chọn nhiều)</label>
+                    <div style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '24px',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--bg-input)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px',
+                      position: 'relative',
+                      height: '140px',
+                      justifyContent: 'center'
+                    }}>
+                      <Upload size={24} style={{ color: 'var(--text-muted)' }} />
+                      <div>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Chọn nhiều ảnh phụ</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        multiple
+                        accept="image/*"
+                        onChange={handleSubImagesChange}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          opacity: 0,
+                          cursor: 'pointer'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {subImagePreviews.length > 0 && (
+                  <div>
+                    <label className="label">Danh sách ảnh phụ chuẩn bị tải lên ({subImagePreviews.length})</label>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      {subImagePreviews.map((preview, index) => (
+                        <div key={index} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                          <img src={preview} alt={`Sub Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            type="button"
+                            onClick={() => handleClearSubImage(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '2px',
+                              right: '2px',
+                              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: '18px',
+                              height: '18px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Specs Builder */}
                 <div>
@@ -983,6 +1236,123 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* TAB 4: ACCOUNT MANAGEMENT */}
+          {activeTab === 'accounts' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Quản lý Tài khoản ({profiles.length})</h3>
+                <button 
+                  onClick={fetchProfiles} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
+                  title="Làm mới tài khoản"
+                >
+                  <RefreshCcw size={12} /> Làm mới
+                </button>
+              </div>
+
+              {fetchingProfiles ? (
+                <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                  <span className="loading-spinner" style={{ width: '32px', height: '32px' }}></span>
+                  <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải danh sách tài khoản...</p>
+                </div>
+              ) : profiles.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+                  <Users size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p style={{ fontSize: '0.95rem' }}>Chưa có tài khoản nào trong hệ thống.</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'var(--bg-input)', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>TÀI KHOẢN</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>EMAIL</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>VAI TRÒ</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>CẬP NHẬT CUỐI</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right' }}>THAO TÁC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profiles.map(profile => (
+                        <tr key={profile.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition-fast)' }}>
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                backgroundColor: profile.role === 'admin' ? 'var(--primary)' : 'var(--bg-input)',
+                                color: profile.role === 'admin' ? 'var(--text-on-primary)' : 'var(--text-primary)',
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid var(--border-color)'
+                              }}>
+                                {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                              <span style={{ fontWeight: 600 }}>{profile.name || 'Khách hàng'}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{profile.email || 'N/A'}</td>
+                          <td style={{ padding: '14px 16px' }}>
+                            <span className={`badge ${profile.role === 'admin' ? 'badge-yellow' : ''}`} style={{ 
+                              fontSize: '0.7rem',
+                              backgroundColor: profile.role === 'admin' ? 'var(--primary-glow)' : 'var(--bg-input)',
+                              color: profile.role === 'admin' ? 'var(--primary)' : 'var(--text-secondary)'
+                            }}>
+                              {profile.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                            {profile.updated_at ? new Date(profile.updated_at).toLocaleDateString('vi-VN', {
+                              year: 'numeric',
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'Chưa cập nhật'}
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
+                            <select
+                              value={profile.role}
+                              onChange={(e) => handleUpdateRole(profile.id, e.target.value as any)}
+                              className="input-field"
+                              style={{ width: '130px', height: '32px', padding: '0 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                              disabled={currentUser?.id === profile.id}
+                            >
+                              <option value="user">Khách hàng</option>
+                              <option value="admin">Quản trị viên</option>
+                            </select>
+                            <button
+                              onClick={() => handleDeleteProfile(profile.id, profile.name)}
+                              disabled={currentUser?.id === profile.id}
+                              style={{
+                                padding: '6px',
+                                color: '#ef4444',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                transition: 'background var(--transition-fast)'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              title="Xóa tài khoản"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
         </main>
       </div>
       </div>
@@ -1053,16 +1423,50 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="label">Giá sản phẩm (USD) *</label>
+                  <label className="label">Giá sản phẩm (VND) *</label>
                   <input 
-                    type="number" 
-                    step="0.01"
-                    min="0.01"
+                    type="text" 
                     value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
+                    onChange={(e) => {
+                      const formatted = formatWithDots(e.target.value);
+                      setEditPrice(formatted);
+                      const rawVnd = parseInt(formatted.replace(/\D/g, ''), 10);
+                      if (!isNaN(rawVnd) && rawVnd > 0) {
+                        setEditPriceJpy(formatWithDots(convertVndToJpy(rawVnd).toString()));
+                      } else {
+                        setEditPriceJpy('');
+                      }
+                    }}
                     className="input-field" 
+                    placeholder="Ví dụ: 4.500.000"
                     required
                   />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    Nhập đến đâu tự động thêm dấu "." và tính quy đổi sang Yên (JPY)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="label" style={{ color: 'var(--primary)' }}>Nhập bằng Yên (JPY)</label>
+                  <input 
+                    type="text" 
+                    value={editPriceJpy}
+                    onChange={(e) => {
+                      const formatted = formatWithDots(e.target.value);
+                      setEditPriceJpy(formatted);
+                      const rawJpy = parseInt(formatted.replace(/\D/g, ''), 10);
+                      if (!isNaN(rawJpy) && rawJpy > 0) {
+                        setEditPrice(formatWithDots(convertJpyToVnd(rawJpy).toString()));
+                      } else {
+                        setEditPrice('');
+                      }
+                    }}
+                    className="input-field" 
+                    placeholder="Ví dụ: 6.500"
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                    Nhập Yên sẽ tự động quy đổi sang VND (1 JPY = 160 VND)
+                  </span>
                 </div>
 
                 <div>
@@ -1130,70 +1534,188 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Image Selection */}
-              <div>
-                <label className="label">Hình ảnh sản phẩm (Để trống nếu giữ nguyên)</label>
-                <div style={{
-                  border: '2px dashed var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '16px',
-                  textAlign: 'center',
-                  backgroundColor: 'var(--bg-input)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px',
-                  position: 'relative'
-                }}>
-                  {editImagePreview ? (
-                    <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <img src={editImagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button 
-                        type="button"
-                        onClick={handleClearEditImage}
-                        style={{
-                          position: 'absolute',
-                          top: '4px',
-                          right: '4px',
-                          backgroundColor: 'rgba(0,0,0,0.6)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '20px',
-                          height: '20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          padding: 0
-                        }}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload size={24} style={{ color: 'var(--text-muted)' }} />
-                      <div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Chọn ảnh mới để thay đổi</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                <div>
+                  <label className="label">Hình ảnh chính (Để trống nếu giữ nguyên)</label>
+                  <div style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-input)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    position: 'relative',
+                    height: '110px',
+                    justifyContent: 'center'
+                  }}>
+                    {editImagePreview ? (
+                      <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                        <img src={editImagePreview} alt="Xem trước" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button 
+                          type="button"
+                          onClick={handleClearEditImage}
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            right: '2px',
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '18px',
+                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          <X size={10} />
+                        </button>
                       </div>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleEditImageChange}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          opacity: 0,
-                          cursor: 'pointer'
-                        }}
-                      />
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <Upload size={20} style={{ color: 'var(--text-muted)' }} />
+                        <div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Chọn ảnh chính mới</span>
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={handleEditImageChange}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0,
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label">Tải lên thêm ảnh phụ mới</label>
+                  <div style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-input)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    position: 'relative',
+                    height: '110px',
+                    justifyContent: 'center'
+                  }}>
+                    <Upload size={20} style={{ color: 'var(--text-muted)' }} />
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Chọn các ảnh phụ mới</span>
+                    </div>
+                    <input 
+                      type="file" 
+                      multiple
+                      accept="image/*"
+                      onChange={handleEditSubImagesChange}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Display existing images & new previews */}
+              {(existingImages.length > 0 || editSubImagePreviews.length > 0) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  {existingImages.length > 0 && (
+                    <div>
+                      <label className="label">Ảnh phụ hiện tại ({existingImages.length})</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        {existingImages.map((imgUrl, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '55px', height: '55px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                            <img src={imgUrl} alt={`Existing ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveExistingImage(imgUrl)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                              title="Xóa ảnh này"
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {editSubImagePreviews.length > 0 && (
+                    <div>
+                      <label className="label">Ảnh phụ mới chuẩn bị tải lên ({editSubImagePreviews.length})</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        {editSubImagePreviews.map((preview, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '55px', height: '55px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
+                            <img src={preview} alt={`New Preview ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button 
+                              type="button"
+                              onClick={() => handleClearEditSubImage(idx)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Specs Editor */}
               <div>
@@ -1297,6 +1819,343 @@ export const AdminDashboard: React.FC = () => {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal Popup */}
+      {viewingOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '20px',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="card animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '28px',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow-xl)',
+            position: 'relative'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid var(--border-color)',
+              paddingBottom: '16px',
+              marginBottom: '24px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CHI TIẾT ĐƠN HÀNG</span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary)' }}>{viewingOrder.id}</h3>
+              </div>
+              <button 
+                onClick={() => setViewingOrder(null)} 
+                style={{ padding: '6px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '28px',
+              textAlign: 'left'
+            }}>
+              {/* Left Column: Customer & Shipping Details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '12px' }}>
+                    Thông tin khách hàng
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                    <div><strong>Họ và tên:</strong> {viewingOrder.shipping?.name || viewingOrder.shipping?.fullName || (profiles.find(p => p.id === viewingOrder.user_id)?.name) || 'Khách hàng ẩn danh'}</div>
+                    <div><strong>Số điện thoại:</strong> {viewingOrder.shipping?.phone || 'N/A'}</div>
+                    <div><strong>Email:</strong> {viewingOrder.shipping?.email || 'N/A'}</div>
+                    <div><strong>Địa chỉ:</strong> {viewingOrder.shipping?.address || 'N/A'}</div>
+                    <div><strong>Thành phố:</strong> {viewingOrder.shipping?.city || 'N/A'}</div>
+                    <div><strong>Hình thức thanh toán:</strong> {viewingOrder.shipping?.paymentMethod === 'cod' ? 'Thanh toán tiền mặt (COD)' : viewingOrder.shipping?.paymentMethod === 'bank' ? 'Chuyển khoản' : 'Thẻ quốc tế'}</div>
+                  </div>
+                </div>
+
+                {viewingOrder.shipping?.note && (
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      Ghi chú đơn hàng
+                    </h4>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', backgroundColor: 'var(--bg-input)', padding: '10px', borderRadius: '6px' }}>
+                      "{viewingOrder.shipping?.note}"
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Right Column: Ordered Items List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                  Sản phẩm đã mua
+                </h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {viewingOrder.items && viewingOrder.items.length > 0 ? (
+                    viewingOrder.items.map(item => (
+                      <div key={item.product.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                        <img 
+                          src={item.product.image} 
+                          alt={item.product.name} 
+                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)', flexShrink: 0 }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h5 style={{ fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'normal', wordBreak: 'break-word' }} title={item.product.name}>
+                            {item.product.name}
+                          </h5>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {item.quantity} x {formatPrice(item.product.price)}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                          {formatPrice(item.product.price * item.quantity)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>Không có chi tiết sản phẩm</div>
+                  )}
+                </div>
+
+                {/* Subtotals & Final sum */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Tạm tính</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {formatPrice(viewingOrder.items ? viewingOrder.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) : viewingOrder.total)}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Vận chuyển</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                      {viewingOrder.items && viewingOrder.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) > 2000000 ? 'Miễn phí' : formatPrice(30000)}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '4px' }}>
+                    <span>Tổng thanh toán</span>
+                    <span style={{ color: 'var(--primary)' }}>{formatPrice(viewingOrder.total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions & Status Transition */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              borderTop: '1px solid var(--border-color)',
+              paddingTop: '20px',
+              marginTop: '24px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                  Chuyển đổi trạng thái đơn hàng
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <select
+                    value={viewingOrder.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as any;
+                      updateOrderStatus(viewingOrder.id, newStatus);
+                      setViewingOrder(prev => prev ? { ...prev, status: newStatus } : null);
+                    }}
+                    className="input-field"
+                    style={{ width: '160px', height: '40px', padding: '0 12px', fontSize: '0.85rem' }}
+                  >
+                    <option value="processing">Đang xử lý</option>
+                    <option value="shipped">Đang giao</option>
+                    <option value="delivered">Đã giao</option>
+                    <option value="cancelled">Đã hủy</option>
+                  </select>
+                  <span className={`badge`} style={{
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    backgroundColor: viewingOrder.status === 'delivered' ? '#10b981' : viewingOrder.status === 'shipped' ? '#3b82f6' : viewingOrder.status === 'cancelled' ? '#ef4444' : 'rgba(234,179,8,0.2)',
+                    color: viewingOrder.status === 'delivered' || viewingOrder.status === 'shipped' || viewingOrder.status === 'cancelled' ? '#fff' : 'var(--primary)'
+                  }}>
+                    {viewingOrder.status === 'delivered' ? 'Đã giao' : viewingOrder.status === 'shipped' ? 'Đang giao' : viewingOrder.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmDeleteTarget({ type: 'order', id: viewingOrder.id, name: viewingOrder.id });
+                  }}
+                  className="btn"
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    height: '40px',
+                    fontWeight: 700,
+                    padding: '10px 20px',
+                    borderRadius: 'var(--radius-md)',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                  }}
+                >
+                  Xóa đơn hàng
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setViewingOrder(null)} 
+                  className="btn btn-primary"
+                  style={{ padding: '10px 24px', fontWeight: 700, height: '40px' }}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Delete Modal */}
+      {confirmDeleteTarget && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(8px)',
+          animation: 'animate-fade-in 0.2s ease'
+        }}>
+          <div className="card" style={{
+            maxWidth: '450px',
+            width: '95%',
+            padding: '28px',
+            textAlign: 'center',
+            border: '1.5px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(239,68,68,0.1)',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto'
+            }}>
+              <AlertTriangle size={28} />
+            </div>
+            
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>
+              {confirmDeleteTarget.type === 'order' ? 'Xác nhận xóa đơn hàng' : 'Xác nhận xóa sản phẩm'}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '24px' }}>
+              {confirmDeleteTarget.type === 'order' ? (
+                <>
+                  Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng <strong style={{ color: 'var(--primary)' }}>{confirmDeleteTarget.id}</strong> khỏi hệ thống? 
+                  Hành động này **không thể hoàn tác** và sẽ xóa tất cả chi tiết sản phẩm liên quan.
+                </>
+              ) : (
+                <>
+                  Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm <strong style={{ color: 'var(--primary)' }}>"{confirmDeleteTarget.name}"</strong> khỏi hệ thống? 
+                  Hành động này **không thể hoàn tác**.
+                </>
+              )}
+            </p>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteTarget(null)}
+                className="btn btn-outline"
+                style={{ height: '40px', padding: '0 20px', fontWeight: 700 }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const target = confirmDeleteTarget;
+                  setConfirmDeleteTarget(null);
+                  setLoading(true);
+                  if (target.type === 'order') {
+                    const res = await deleteOrder(target.id);
+                    setLoading(false);
+                    if (res.success) {
+                      setViewingOrder(null);
+                      setSuccessMsg(`Đã xóa đơn hàng ${target.id} thành công!`);
+                    } else {
+                      setErrorMsg(`Lỗi khi xóa đơn hàng: ${res.error}`);
+                    }
+                  } else {
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                    try {
+                      const res = await deleteProduct(target.id);
+                      if (res.success) {
+                        setSuccessMsg(`Đã xóa sản phẩm "${target.name}" thành công!`);
+                      } else {
+                        setErrorMsg(res.error || 'Lỗi khi xóa sản phẩm.');
+                      }
+                    } catch (err: any) {
+                      setErrorMsg(err.message || 'Lỗi kết nối khi xóa.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+                className="btn"
+                style={{
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Đồng ý xóa
+              </button>
+            </div>
           </div>
         </div>
       )}

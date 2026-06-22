@@ -10,6 +10,7 @@ export interface Product {
   category: string;
   description: string;
   image: string;
+  images?: string[];
   specs: Record<string, string>;
   features: string[];
   stock: number;
@@ -32,11 +33,12 @@ export interface User {
 
 export interface Order {
   id: string;
+  user_id?: string;
   items: CartItem[];
   total: number;
   shipping: any;
   date: string;
-  status: 'processing' | 'shipped' | 'delivered';
+  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
 }
 
 interface StoreContextType {
@@ -62,6 +64,8 @@ interface StoreContextType {
   // NSFW Filter states
   showNsfw: boolean;
   setShowNsfw: (show: boolean) => void;
+  blurNsfw: boolean;
+  setBlurNsfw: (blur: boolean) => void;
 
   currentUser: User | null;
   login: (email: string, password: string) => Promise<{ error: any }>;
@@ -76,6 +80,10 @@ interface StoreContextType {
   
   placeOrder: (shippingDetails: any) => Promise<string>;
   lastOrder: Order | null;
+  setLastOrder: React.Dispatch<React.SetStateAction<Order | null>>;
+  userOrders: Order[];
+  userOrdersLoading: boolean;
+  fetchUserOrders: () => Promise<void>;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   
@@ -83,7 +91,8 @@ interface StoreContextType {
   refreshProducts: () => Promise<void>;
   allOrders: Order[];
   fetchAllOrders: () => Promise<void>;
-  updateOrderStatus: (orderId: string, status: 'processing' | 'shipped' | 'delivered') => Promise<void>;
+  updateOrderStatus: (orderId: string, status: 'processing' | 'shipped' | 'delivered' | 'cancelled') => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
   addProduct: (
     productData: {
       name: string;
@@ -96,7 +105,8 @@ interface StoreContextType {
       isFeatured: boolean;
       isNsfw: boolean;
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
   updateProduct: (
@@ -111,99 +121,22 @@ interface StoreContextType {
       stock: number;
       isFeatured: boolean;
       isNsfw: boolean;
+      existingImages?: string[];
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-// Local mock products database as fallback
-const FALLBACK_PRODUCTS: Product[] = [
-  {
-    id: 'prod-1',
-    name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
-    price: 159.99,
-    rating: 4.9,
-    reviewsCount: 42,
-    category: 'Figure',
-    description: 'Mô hình figure cao cấp Altria Pendragon tỷ lệ 1/7 chính hãng Aniplex Nhật Bản. Thiết kế tinh xảo, áo choàng vải thật và các chi tiết giáp kim loại óng ánh cực kỳ sắc nét.',
-    image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tỷ lệ': '1/7 Scale',
-      'Chiều cao': 'Khoảng 25cm',
-      'Chất liệu': 'PVC & ABS chất lượng cao',
-      'Hãng sản xuất': 'Aniplex'
-    },
-    features: ['Chi tiết giáp kiếm đi kèm sắc sảo', 'Hộp ngoài thiết kế sang trọng giữ hộp đẹp', 'Sơn tĩnh điện chống phai màu sơn'],
-    stock: 5,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-2',
-    name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
-    price: 8.50,
-    rating: 4.8,
-    reviewsCount: 154,
-    category: 'Food',
-    description: 'Hộp bánh xốp KitKat vị trà xanh Matcha thượng hạng sản xuất tại Uji, Kyoto. Vị đắng nhẹ thanh mát hòa quyện cùng lớp kem sô cô la trắng ngọt ngào béo ngậy.',
-    image: 'https://images.unsplash.com/photo-1582170088993-9c17cc919b4b?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Khối lượng': '150g',
-      'Quy cách': 'Hộp 12 gói nhỏ',
-      'Xuất xứ': 'Uji, Kyoto, Nhật Bản',
-      'Hạn sử dụng': '12 tháng kể từ ngày sản xuất'
-    },
-    features: ['Hương vị Matcha tự nhiên nguyên bản', 'Không chứa chất bảo quản hóa học', 'Sản xuất trực tiếp tại nhà máy nội địa Nhật'],
-    stock: 35,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-3',
-    name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
-    price: 12.00,
-    rating: 5.0,
-    reviewsCount: 89,
-    category: 'Books',
-    description: 'Tập truyện tranh One Piece tập 100 phiên bản tiếng Nhật nguyên bản xuất bản bởi Shueisha. Ấn phẩm đặc biệt dành cho các fan cứng sưu tầm kỉ niệm dấu mốc lịch sử.',
-    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tác giả': 'Eiichiro Oda',
-      'Nhà xuất bản': 'Shueisha',
-      'Ngôn ngữ': 'Tiếng Nhật',
-      'Năm xuất bản': '2021'
-    },
-    features: ['Bìa rời (Obi) đặc trưng nguyên bản Nhật', 'In ấn sắc nét chất lượng giấy cao cấp', 'Kèm bookmark phiên bản giới hạn'],
-    stock: 15,
-    isFeatured: true,
-    isNsfw: false
-  },
-  {
-    id: 'prod-4',
-    name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
-    price: 180.00,
-    rating: 4.9,
-    reviewsCount: 28,
-    category: 'Figure',
-    description: 'Mô hình Sora Kasugano tỷ lệ 1/6 trong trang phục thỏ đen gợi cảm từ hãng FREEing. Phiên bản giới hạn chi tiết và nhạy cảm dành riêng cho nhà sưu tập trên 18 tuổi.',
-    image: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?w=800&auto=format&fit=crop&q=60',
-    specs: {
-      'Tỷ lệ': '1/6 Scale',
-      'Chiều cao': 'Khoảng 30cm',
-      'Độ tuổi áp dụng': '18+ (NSFW)',
-      'Hãng sản xuất': 'FREEing'
-    },
-    features: ['Trang phục thỏ bằng vải lưới thật co giãn', 'Đầy đủ phụ kiện đi kèm', 'Thiết kế nhạy cảm cao cấp chuẩn hàng sưu tầm'],
-    stock: 3,
-    isNsfw: true
-  }
-];
+const FALLBACK_PRODUCTS: Product[] = [];
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('yelloworder_cart');
     return savedCart ? JSON.parse(savedCart) : [];
@@ -220,9 +153,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Search, Filter and Sort States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
   const [sortBy, setSortBy] = useState('featured');
-  const [showNsfw, setShowNsfw] = useState(false);
+  const [showNsfw, setShowNsfw] = useState<boolean>(() => {
+    return localStorage.getItem('yelloworder_show_nsfw') === 'true';
+  });
+  const [blurNsfw, setBlurNsfw] = useState<boolean>(() => {
+    return localStorage.getItem('yelloworder_blur_nsfw') !== 'false';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('yelloworder_show_nsfw', String(showNsfw));
+  }, [showNsfw]);
+
+  useEffect(() => {
+    localStorage.setItem('yelloworder_blur_nsfw', String(blurNsfw));
+  }, [blurNsfw]);
   
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -252,6 +198,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           category: p.category,
           description: p.description || '',
           image: p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+          images: p.image_urls || (p.image_url ? [p.image_url] : []),
           specs: p.specs || {},
           features: p.features || [],
           stock: p.stock || 0,
@@ -321,13 +268,192 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
+  // Fetch user orders and synchronize lastOrder
+  const fetchUserOrders = async () => {
+    if (!currentUser?.id) {
+      setUserOrders([]);
+      return;
+    }
+    setUserOrdersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          user_id,
+          total,
+          status,
+          shipping_details,
+          created_at,
+          order_items (
+            id,
+            quantity,
+            price,
+            product_id,
+            products (
+              id,
+              name,
+              image_url,
+              category
+            )
+          )
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Lỗi tải danh sách đơn hàng người dùng:', error.message);
+        setUserOrdersLoading(false);
+        return;
+      }
+
+      if (data) {
+        const resolveOrderItemProduct = (item: any) => {
+          if (item.products) {
+            return {
+              id: item.products.id,
+              name: item.products.name,
+              image: item.products.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+              category: item.products.category
+            };
+          }
+          
+          const price = parseFloat(item.price);
+          if (price === 4000000) {
+            return {
+              id: 'prod-1',
+              name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
+              image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          if (price === 210000) {
+            return {
+              id: 'prod-2',
+              name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
+              image: 'https://images.unsplash.com/photo-1582170088993-9c17cc919b4b?w=800&auto=format&fit=crop&q=60',
+              category: 'Food'
+            };
+          }
+          if (price === 300000) {
+            return {
+              id: 'prod-3',
+              name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
+              image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=60',
+              category: 'Books'
+            };
+          }
+          if (price === 4500000) {
+            return {
+              id: 'prod-4',
+              name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
+              image: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          
+          return {
+            id: 'prod-unknown',
+            name: 'Sản phẩm Demo #' + (item.product_id || 'Unknown'),
+            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+            category: 'Demo'
+          };
+        };
+
+        const mappedOrders: Order[] = data.map((o: any) => ({
+          id: o.id,
+          user_id: o.user_id,
+          items: (o.order_items || []).map((item: any) => {
+            const resolved = resolveOrderItemProduct(item);
+            return {
+              product: {
+                id: resolved.id,
+                name: resolved.name,
+                price: parseFloat(item.price),
+                rating: 5.0,
+                reviewsCount: 0,
+                category: resolved.category,
+                description: '',
+                image: resolved.image,
+                specs: {},
+                features: []
+              },
+              quantity: item.quantity
+            };
+          }),
+          total: parseFloat(o.total),
+          shipping: o.shipping_details,
+          date: new Date(o.created_at).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: o.status
+        }));
+        
+        setUserOrders(mappedOrders);
+
+        // Sync lastOrder if it was deleted from DB
+        if (lastOrder) {
+          const exists = mappedOrders.some(o => o.id === lastOrder.id);
+          if (!exists) {
+            setLastOrder(null);
+            localStorage.removeItem('yelloworder_last_order');
+          } else {
+            // Also sync status if it changed
+            const currentDbOrder = mappedOrders.find(o => o.id === lastOrder.id);
+            if (currentDbOrder && currentDbOrder.status !== lastOrder.status) {
+              setLastOrder(currentDbOrder);
+              localStorage.setItem('yelloworder_last_order', JSON.stringify(currentDbOrder));
+            }
+          }
+        }
+      } else {
+        setUserOrders([]);
+        if (lastOrder) {
+          setLastOrder(null);
+          localStorage.removeItem('yelloworder_last_order');
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối khi tải đơn hàng người dùng:', err);
+    } finally {
+      setUserOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserOrders();
+  }, [currentUser]);
+
   // Fetch all orders for administrator dashboard view
   const fetchAllOrders = async () => {
     if (currentUser?.role !== 'admin') return;
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          total,
+          status,
+          shipping_details,
+          created_at,
+          order_items (
+            id,
+            quantity,
+            price,
+            product_id,
+            products (
+              id,
+              name,
+              image_url,
+              category
+            )
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -336,9 +462,79 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (data) {
+        const resolveOrderItemProduct = (item: any) => {
+          if (item.products) {
+            return {
+              id: item.products.id,
+              name: item.products.name,
+              image: item.products.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+              category: item.products.category
+            };
+          }
+          
+          const price = parseFloat(item.price);
+          if (price === 4000000) {
+            return {
+              id: 'prod-1',
+              name: 'Mô hình Altria Pendragon 1/7 Scale (Fate/Grand Order)',
+              image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          if (price === 210000) {
+            return {
+              id: 'prod-2',
+              name: 'Bánh KitKat Trà Xanh Uji Matcha Kyoto',
+              image: 'https://images.unsplash.com/photo-1582170088993-9c17cc919b4b?w=800&auto=format&fit=crop&q=60',
+              category: 'Food'
+            };
+          }
+          if (price === 300000) {
+            return {
+              id: 'prod-3',
+              name: 'Manga One Piece Tập 100 (Bản Gốc Tiếng Nhật)',
+              image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=60',
+              category: 'Books'
+            };
+          }
+          if (price === 4500000) {
+            return {
+              id: 'prod-4',
+              name: 'Mô hình Sora Kasugano 1/6 Bunny Version (NSFW)',
+              image: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?w=800&auto=format&fit=crop&q=60',
+              category: 'Figure'
+            };
+          }
+          
+          return {
+            id: 'prod-unknown',
+            name: 'Sản phẩm Demo #' + (item.product_id || 'Unknown'),
+            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60',
+            category: 'Demo'
+          };
+        };
+
         const mappedOrders: Order[] = data.map((o: any) => ({
           id: o.id,
-          items: [], // detail items can be expanded, but we display checkout totals for simplicity
+          user_id: o.user_id,
+          items: (o.order_items || []).map((item: any) => {
+            const resolved = resolveOrderItemProduct(item);
+            return {
+              product: {
+                id: resolved.id,
+                name: resolved.name,
+                price: parseFloat(item.price),
+                rating: 5.0,
+                reviewsCount: 0,
+                category: resolved.category,
+                description: '',
+                image: resolved.image,
+                specs: {},
+                features: []
+              },
+              quantity: item.quantity
+            };
+          }),
           total: parseFloat(o.total),
           shipping: o.shipping_details,
           date: new Date(o.created_at).toLocaleDateString('vi-VN', {
@@ -357,7 +553,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'processing' | 'shipped' | 'delivered') => {
+  const updateOrderStatus = async (orderId: string, status: 'processing' | 'shipped' | 'delivered' | 'cancelled') => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -375,6 +571,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Lỗi kết nối khi cập nhật đơn hàng:', err);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    try {
+      // Delete order items first
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId)
+        .select();
+
+      if (itemsError) {
+        console.error('Lỗi khi xóa chi tiết đơn hàng:', itemsError.message);
+        return { success: false, error: itemsError.message };
+      }
+
+      // Delete order
+      const { data: deletedOrders, error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+        .select();
+
+      if (orderError) {
+        console.error('Lỗi khi xóa đơn hàng:', orderError.message);
+        return { success: false, error: orderError.message };
+      }
+
+      // If data is empty, it means RLS blocked the deletion
+      if (!deletedOrders || deletedOrders.length === 0) {
+        console.warn('Xóa đơn hàng thất bại: 0 hàng bị ảnh hưởng. Hãy kiểm tra lại cấu hình chính sách Row-Level Security (RLS) của bảng orders trên Supabase.');
+        return { 
+          success: false, 
+          error: 'Chính sách Row-Level Security (RLS) trên Supabase đang chặn quyền xóa đơn hàng của tài khoản này.' 
+        };
+      }
+
+      setAllOrders(prev => prev.filter(o => o.id !== orderId));
+      return { success: true };
+    } catch (err: any) {
+      console.error('Lỗi kết nối khi xóa đơn hàng:', err);
+      return { success: false, error: err.message || 'Lỗi kết nối' };
     }
   };
 
@@ -401,6 +640,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const addToCart = (product: Product, quantity = 1) => {
+    if (!currentUser) {
+      alert('Vui lòng đăng nhập tài khoản để thêm sản phẩm vào giỏ hàng!');
+      setActiveView('login');
+      return;
+    }
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.product.id === product.id);
       if (existingItem) {
@@ -473,7 +717,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isFeatured: boolean;
       isNsfw: boolean;
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => {
     try {
       let imageUrl = '';
@@ -497,6 +742,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         imageUrl = urlData.publicUrl;
       }
 
+      // Upload sub images
+      const subImageUrls: string[] = [];
+      if (subImageFiles && subImageFiles.length > 0) {
+        for (const file of subImageFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+          const filePath = `products/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Lỗi tải ảnh phụ:', uploadError.message);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          subImageUrls.push(urlData.publicUrl);
+        }
+      }
+
+      const allImageUrls = imageUrl ? [imageUrl, ...subImageUrls] : subImageUrls;
+
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -505,6 +777,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           category: productData.category,
           description: productData.description,
           image_url: imageUrl || undefined,
+          image_urls: allImageUrls,
           specs: productData.specs,
           features: productData.features,
           stock: productData.stock,
@@ -561,8 +834,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       stock: number;
       isFeatured: boolean;
       isNsfw: boolean;
+      existingImages?: string[];
     },
-    imageFile?: File
+    imageFile?: File,
+    subImageFiles?: File[]
   ) => {
     try {
       let imageUrl = '';
@@ -586,6 +861,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         imageUrl = urlData.publicUrl;
       }
 
+      // Upload new sub images
+      const newSubUrls: string[] = [];
+      if (subImageFiles && subImageFiles.length > 0) {
+        for (const file of subImageFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+          const filePath = `products/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Lỗi tải ảnh phụ:', uploadError.message);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          newSubUrls.push(urlData.publicUrl);
+        }
+      }
+
+      const existingUrls = productData.existingImages || [];
+      const finalImageUrl = imageUrl || (existingUrls.length > 0 ? existingUrls[0] : '');
+      const finalImageUrls = imageUrl 
+        ? [imageUrl, ...existingUrls.filter(u => u !== finalImageUrl), ...newSubUrls]
+        : [...existingUrls, ...newSubUrls];
+
       // If it is mock data
       if (productId.startsWith('prod-')) {
         setProducts(prev => prev.map(p => {
@@ -596,7 +902,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               price: productData.price,
               category: productData.category,
               description: productData.description,
-              image: imageUrl || p.image,
+              image: finalImageUrl || p.image,
+              images: finalImageUrls,
               specs: productData.specs,
               features: productData.features,
               stock: productData.stock,
@@ -618,12 +925,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         features: productData.features,
         stock: productData.stock,
         is_featured: productData.isFeatured,
-        is_nsfw: productData.isNsfw
+        is_nsfw: productData.isNsfw,
+        image_url: finalImageUrl || null,
+        image_urls: finalImageUrls
       };
-
-      if (imageUrl) {
-        updatePayload.image_url = imageUrl;
-      }
 
       const { data, error } = await supabase
         .from('products')
@@ -645,7 +950,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const placeOrder = async (shippingDetails: any) => {
     const orderId = 'ORD-' + Math.floor(Math.random() * 900000 + 100000);
-    const shippingFee = cartTotal > 200 ? 0 : 15.00;
+    const shippingFee = cartTotal > 2000000 ? 0 : 30000;
     const orderTotal = cartTotal + shippingFee;
     
     const newOrder: Order = {
@@ -701,6 +1006,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (err) {
         console.error('Lỗi kết nối khi đặt hàng lên Supabase:', err);
       }
+      await fetchUserOrders();
     }
 
     clearCart();
@@ -761,6 +1067,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       showNsfw,
       setShowNsfw,
+      blurNsfw,
+      setBlurNsfw,
 
       currentUser,
       login,
@@ -772,6 +1080,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSelectedProduct,
       placeOrder,
       lastOrder,
+      setLastOrder,
+      userOrders,
+      userOrdersLoading,
+      fetchUserOrders,
       theme,
       toggleTheme,
       
@@ -779,6 +1091,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       allOrders,
       fetchAllOrders,
       updateOrderStatus,
+      deleteOrder,
       addProduct,
       deleteProduct,
       updateProduct

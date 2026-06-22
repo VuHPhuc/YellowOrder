@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { ProductCard } from './ProductCard';
 import { SlidersHorizontal, RefreshCcw, ShoppingBag } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const ProductGrid: React.FC = () => {
   const {
@@ -13,9 +14,7 @@ export const ProductGrid: React.FC = () => {
     priceRange,
     setPriceRange,
     sortBy,
-    setSortBy,
-    showNsfw,
-    setShowNsfw
+    setSortBy
   } = useStore();
 
   const categories = ['All', 'Figure', 'Food', 'Books', 'Goods', 'Cosmetics'];
@@ -27,9 +26,8 @@ export const ProductGrid: React.FC = () => {
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('All');
-    setPriceRange([0, 500]);
+    setPriceRange([0, 10000000]);
     setSortBy('featured');
-    setShowNsfw(false);
   };
 
   return (
@@ -39,7 +37,12 @@ export const ProductGrid: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '32px', textAlign: 'left' }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-            {selectedCategory === 'All' ? 'Tất cả sản phẩm' : `Thiết bị ${selectedCategory}`}
+            {selectedCategory === 'All' ? 'Tất cả sản phẩm' : 
+             selectedCategory === 'Figure' ? 'Figure / Mô hình' :
+             selectedCategory === 'Food' ? 'Đồ ăn / Bánh kẹo' :
+             selectedCategory === 'Books' ? 'Sách / Manga' :
+             selectedCategory === 'Goods' ? 'Đồ dùng Nhật Bản' :
+             selectedCategory === 'Cosmetics' ? 'Mỹ phẩm / Làm đẹp' : selectedCategory}
           </h2>
           {searchQuery && (
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -123,14 +126,14 @@ export const ProductGrid: React.FC = () => {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
-                <span>$0</span>
-                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Tối đa: ${priceRange[1]}</span>
+                <span>{formatPrice(0)}</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Tối đa: {formatPrice(priceRange[1])}</span>
               </div>
               <input
                 type="range"
                 min="0"
-                max="500"
-                step="10"
+                max="10000000"
+                step="100000"
                 value={priceRange[1]}
                 onChange={handlePriceChange}
                 style={{
@@ -142,21 +145,7 @@ export const ProductGrid: React.FC = () => {
             </div>
           </div>
 
-          {/* Options / Sensitive Filters */}
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Tùy chọn khác
-            </h4>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-              <input
-                type="checkbox"
-                checked={showNsfw}
-                onChange={(e) => setShowNsfw(e.target.checked)}
-                style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
-              />
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Hiển thị sản phẩm NSFW</span>
-            </label>
-          </div>
+
 
         </aside>
 

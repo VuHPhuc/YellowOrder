@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Star, ShoppingCart, ArrowLeft, Check, ShieldCheck, Heart } from 'lucide-react';
+import { formatPrice } from '../utils/currency';
 
 export const ProductDetails: React.FC = () => {
-  const { selectedProduct, setSelectedProduct, addToCart, setActiveView } = useStore();
+  const { selectedProduct, setSelectedProduct, addToCart, setActiveView, blurNsfw } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
   const [revealNsfw, setRevealNsfw] = useState(false);
+  const [activeImage, setActiveImage] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setActiveImage(selectedProduct.image);
+    }
+  }, [selectedProduct]);
 
   if (!selectedProduct) {
     return (
@@ -66,6 +74,8 @@ export const ProductDetails: React.FC = () => {
           <div style={{
             position: 'relative',
             width: '100%',
+            aspectRatio: '1 / 1',
+            minHeight: '350px',
             borderRadius: 'var(--radius-lg)',
             overflow: 'hidden',
             backgroundColor: 'var(--bg-input)',
@@ -73,18 +83,18 @@ export const ProductDetails: React.FC = () => {
             boxShadow: 'var(--shadow-lg)'
           }}>
             <img 
-              src={selectedProduct.image} 
+              src={activeImage || selectedProduct.image} 
               alt={selectedProduct.name}
               style={{ 
                 width: '100%', 
-                height: 'auto', 
+                height: '100%', 
                 display: 'block', 
                 objectFit: 'cover',
-                filter: selectedProduct.isNsfw && !revealNsfw ? 'blur(25px)' : 'none',
+                filter: selectedProduct.isNsfw && blurNsfw && !revealNsfw ? 'blur(25px)' : 'none',
                 transition: 'filter var(--transition-fast)'
               }}
             />
-            {selectedProduct.isNsfw && !revealNsfw && (
+            {selectedProduct.isNsfw && blurNsfw && !revealNsfw && (
               <div 
                 onClick={() => setRevealNsfw(true)}
                 style={{
@@ -135,12 +145,42 @@ export const ProductDetails: React.FC = () => {
             )}
           </div>
 
+          {/* Thumbnail Image List / Gallery */}
+          {selectedProduct.images && selectedProduct.images.length > 1 && (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '-4px' }}>
+              {selectedProduct.images.map((imgUrl, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setActiveImage(imgUrl)}
+                  style={{
+                    width: '65px',
+                    height: '65px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: activeImage === imgUrl ? '2.5px solid var(--primary)' : '1px solid var(--border-color)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    backgroundColor: 'var(--bg-input)',
+                    boxShadow: activeImage === imgUrl ? '0 0 8px var(--primary-glow-strong)' : 'none',
+                    transform: activeImage === imgUrl ? 'scale(1.05)' : 'scale(1)'
+                  }}
+                >
+                  <img 
+                    src={imgUrl} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Guarantee Info Box */}
           <div className="card" style={{ display: 'flex', gap: '12px', padding: '16px', alignItems: 'center', backgroundColor: 'var(--bg-input)' }}>
             <ShieldCheck size={28} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ textAlign: 'left' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block' }}>Cam kết từ YellowOrder</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Bảo hành chính hãng 24 tháng. Đổi mới 1-đổi-1 nếu phát sinh lỗi phần cứng từ nhà sản xuất.</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cam kết sản phẩm chính hãng 100%. Nhập khẩu trực tiếp từ Nhật Bản. Đóng gói cẩn thận chống móp méo hộp.</span>
             </div>
           </div>
         </div>
@@ -151,7 +191,11 @@ export const ProductDetails: React.FC = () => {
           {/* Metadata */}
           <div>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Thiết bị {selectedProduct.category}
+              {selectedProduct.category === 'Figure' ? 'Figure / Mô hình' :
+               selectedProduct.category === 'Food' ? 'Đồ ăn / Bánh kẹo' :
+               selectedProduct.category === 'Books' ? 'Sách / Manga' :
+               selectedProduct.category === 'Goods' ? 'Đồ dùng Nhật Bản' :
+               selectedProduct.category === 'Cosmetics' ? 'Mỹ phẩm / Làm đẹp' : selectedProduct.category}
             </span>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, marginTop: '6px', marginBottom: '12px', lineHeight: 1.2 }}>
               {selectedProduct.name}
@@ -177,7 +221,7 @@ export const ProductDetails: React.FC = () => {
           {/* Pricing */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedProduct.price)}
+              {formatPrice(selectedProduct.price)}
             </span>
             <span className="badge badge-yellow" style={{ fontSize: '0.7rem' }}>Còn hàng: {selectedProduct.stock} sản phẩm</span>
           </div>
