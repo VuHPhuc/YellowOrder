@@ -382,6 +382,17 @@ button {
   background: var(--border-hover);
 }
 
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 /* Responsive Form Row Grids */
 .form-row-grid {
   display: grid;

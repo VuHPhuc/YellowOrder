@@ -119,7 +119,7 @@ export const AccountPage: React.FC = () => {
 
   return (
     <div className="container animate-fade-in" style={{ padding: '40px 0 80px 0', textAlign: 'left' }}>
-      <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '24px' }}>Trang cá nhân</h2>
+      <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '24px' }}>Tài khoản của tôi</h2>
 
       <div className="grid-account-layout">
 
@@ -440,7 +440,7 @@ export const AccountPage: React.FC = () => {
                     <div>
                       <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '4px' }}>Hiển thị nội dung NSFW 18+</strong>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block' }}>
-                        Cho phép các sản phẩm chứa hình ảnh nhạy cảm, mô hình 18+ xuất hiện khi bạn đang duyệt qua danh sách sản phẩm.
+                        Cho phép các sản phẩm và bài đăng Cộng Đồng chứa hình ảnh nhạy cảm, mô hình 18+ xuất hiện khi bạn duyệt xem.
                       </span>
                     </div>
                   </label>
@@ -466,9 +466,9 @@ export const AccountPage: React.FC = () => {
                         style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', marginTop: '3px', cursor: 'pointer' }}
                       />
                       <div>
-                        <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '4px' }}>Tự động làm mờ hình ảnh nhạy cảm</strong>
+                        <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '4px' }}>Tự động làm mờ hình ảnh nhạy cảm (Blur NSFW)</strong>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block' }}>
-                          Mặc định làm mờ (blur) hình ảnh sản phẩm 18+ trong cửa hàng. Bạn có thể bấm trực tiếp vào hình ảnh trên thẻ sản phẩm hoặc trang chi tiết để mở khóa tạm thời.
+                          Mặc định làm mờ (blur) hình ảnh 18+ trong Cửa Hàng và bảng tin Cộng Đồng. Nếu BỎ CHỌN (Unblur), tất cả ảnh 18+ của Cộng Đồng và Cửa hàng sẽ luôn hiển thị sắc nét ngay từ đầu mà không cần bấm mở khoá.
                         </span>
                       </div>
                     </label>

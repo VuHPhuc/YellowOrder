@@ -46,7 +46,7 @@ export const Navbar: React.FC = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const handleNavClick = (view: 'home' | 'shop' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin') => {
+  const handleNavClick = (view: 'home' | 'shop' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin' | 'community') => {
     setActiveView(view);
     setIsMobileMenuOpen(false);
   };
@@ -117,6 +117,16 @@ export const Navbar: React.FC = () => {
               }}
             >
               Cửa Hàng
+            </button>
+            <button 
+              onClick={() => handleNavClick('community')}
+              style={{ 
+                fontWeight: 600, 
+                fontSize: '0.95rem',
+                color: activeView === 'community' ? 'var(--primary)' : 'var(--text-secondary)'
+              }}
+            >
+              Cộng Đồng
             </button>
           </nav>
 
@@ -297,7 +307,7 @@ export const Navbar: React.FC = () => {
                           color: 'var(--text-primary)'
                         }}
                       >
-                        <User size={16} /> Lịch sử mua hàng
+                        <User size={16} /> Tài khoản của tôi
                       </button>
                       <button
                         onClick={() => {
@@ -403,6 +413,21 @@ export const Navbar: React.FC = () => {
               >
                 Cửa Hàng
               </button>
+              <button 
+                onClick={() => handleNavClick('community')}
+                style={{ 
+                  justifyContent: 'flex-start',
+                  padding: '10px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 700, 
+                  fontSize: '1rem',
+                  backgroundColor: activeView === 'community' ? 'var(--primary-glow)' : 'transparent',
+                  color: activeView === 'community' ? 'var(--primary)' : 'var(--text-primary)',
+                  width: '100%'
+                }}
+              >
+                Cộng Đồng
+              </button>
               
               {currentUser && currentUser.role === 'admin' && (
                 <button 
@@ -435,7 +460,7 @@ export const Navbar: React.FC = () => {
                     width: '100%'
                   }}
                 >
-                  Lịch sử mua hàng
+                  Tài khoản của tôi
                 </button>
               )}
             </div>

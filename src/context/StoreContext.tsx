@@ -72,8 +72,8 @@ interface StoreContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   logout: () => Promise<void>;
   
-  activeView: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin';
-  setActiveView: (view: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin') => void;
+  activeView: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin' | 'community';
+  setActiveView: (view: 'home' | 'shop' | 'product-details' | 'cart' | 'checkout' | 'login' | 'success' | 'account' | 'admin' | 'community') => void;
   
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
